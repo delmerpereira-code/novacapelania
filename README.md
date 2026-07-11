@@ -442,9 +442,18 @@ telefone inválido, mesmo critério do sistema antigo), espalhadas entre
    (nomes de equipe que mudaram de horário/dia na planilha desde o
    import) — a critério de quem gerencia as equipes hoje, agora que a
    tela de gestão já funciona.
-2. Agendar `distribuir_integracoes()` via `pg_cron` (hoje é manual, botão
-   🔀 na tela de Integração) pra recuperar o comportamento automático de
-   domingo 23h55 do `snapshotSemanal` antigo, se ainda for desejado.
+2. ~~Agendar `distribuir_integracoes()` via `pg_cron`~~ — feito
+   (`0006_agendamento_distribuicao.sql`): roda toda segunda 03:50 UTC
+   (domingo 23:50 em America/Manaus, UTC-4 sem horário de verão —
+   **ajustar o cron expression se a operação não for mais em Manaus/AM**).
+   O botão manual 🔀 continua funcionando pra liderança disparar antes da
+   hora se precisar. A checagem de liderança dentro da function só se
+   aplica quando a chamada vem com um JWT (via API) que não é de
+   liderança — chamada sem JWT nenhum (só possível internamente, cron ou
+   SQL direto) é permitida, já que só quem tem acesso ao banco consegue
+   chamar assim. Testado: liderança consegue disparar manualmente, membro
+   comum continua bloqueado, cron registrado e ativo (`select * from
+   cron.job`).
 3. Decidir se o app vai continuar como está (matrícula/senha + JWT
    próprio) ou se compensa migrar pra Supabase Auth nativo no futuro —
    não é urgente, mas é uma dívida arquitetural conhecida.
