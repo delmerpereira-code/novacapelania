@@ -113,14 +113,22 @@ for (const r of alvo) {
     continue;
   }
 
+  // Só grava a linha em `integracoes` quando o integrador da planilha
+  // antiga foi resolvido de verdade. Se não foi (nome não bateu com o
+  // cadastro), NÃO cria a linha com integrador_id nulo -- isso deixaria a
+  // decisão invisível pro distribuir_integracoes() (que só processa quem
+  // ainda não tem linha em integracoes), presa sem integrador pra sempre.
+  // Melhor deixar de fora e deixar o round-robin de verdade assumir.
   const integradorNome = integradorPorDecisaoId.get(r.ID);
-  const integradorId = integradorNome ? membroPorNome.get(normalizaEspacos(integradorNome).toLowerCase()) || null : null;
-  const { error: errInteg } = await supabase.from('integracoes').insert({
-    decisao_id: novaDecisao.id,
-    integrador_id: integradorId,
-    integrado: false,
-  });
-  if (errInteg) console.error(`[erro integracoes] ${r.ID}: ${errInteg.message}`);
+  const integradorId = integradorNome ? membroPorNome.get(normalizaEspacos(integradorNome).toLowerCase()) : null;
+  if (integradorId) {
+    const { error: errInteg } = await supabase.from('integracoes').insert({
+      decisao_id: novaDecisao.id,
+      integrador_id: integradorId,
+      integrado: false,
+    });
+    if (errInteg) console.error(`[erro integracoes] ${r.ID}: ${errInteg.message}`);
+  }
 
   pendentesOk++;
 }
@@ -141,3 +149,6 @@ console.log('  pendentes puladas por telefone duplicado na semana:', pendentesDu
 console.log('  puladas por capelão não encontrado:', semCapelao);
 console.log('  sem equipe resolvida (gravadas com equipe_id nulo):', semEquipe);
 if (semEquipeNomes.size) console.log('    nomes não resolvidos:', [...semEquipeNomes]);
+console.log('\nAlgumas pendentes podem ter ficado sem integrador (nome da planilha');
+console.log('antiga não bateu com o cadastro) -- dispare a distribuição (botão 🔀 na');
+console.log('tela de Integração, só Líder) pra atribuir um integrador de verdade a elas.');

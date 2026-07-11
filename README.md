@@ -424,6 +424,18 @@ mas não aparecem atribuídas a uma pessoa específica no relatório de
 Histórico. Não bloqueia o uso, mas vale revisar se o relatório de
 Histórico precisar refletir o passado com mais precisão.
 
+**Bug real encontrado e corrigido** (mesmo dia): o import criava uma
+linha em `integracoes` pra toda decisão pendente, mesmo quando não
+conseguia resolver o integrador original da planilha antiga (mesmo
+problema de grafia acima) — gravava com `integrador_id` nulo em vez de
+deixar de fora. Como `distribuir_integracoes()` só processa decisões que
+**ainda não têm** linha em `integracoes`, essas 609 (de 696) ficavam
+invisíveis pro round-robin, presas sem integrador pra sempre. Corrigido
+apagando as linhas órfãs e rodando a distribuição de novo — resultado:
+693 de 696 pendentes com integrador atribuído (as 3 restantes têm
+telefone inválido, mesmo critério do sistema antigo), espalhadas entre
+137 integradores (4 a 10 cada), em vez de concentradas em só 21 pessoas.
+
 ## Próximos passos (não bloqueiam uso, mas valem revisão)
 
 1. Resolver os 4 vínculos membro-equipe pendentes da importação original
