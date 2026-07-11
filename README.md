@@ -133,14 +133,236 @@ já existem lá (podem estar presentes na aba mas nunca lidas pelo
 - **Hospedagem do frontend**: pode continuar no GitHub Pages, só apontando
   para o Supabase em vez do Apps Script.
 
-## Próximos passos
+## Schema definitivo (v1)
 
-1. Confirmar as ambiguidades marcadas acima direto na planilha real
-   (coluna F de Cadastro; colunas reais da aba Equipes).
-2. Criar projeto no Supabase e desenhar o schema definitivo (`membros`,
-   `equipes`, `membro_equipe`, `decisoes`, `integracoes`,
-   `resultado_integracao`, `presenca`, `resumo_visitas`).
-3. Escrever script de import do Cadastro/Equipes atuais para o Supabase
-   (seed único, manual).
-4. Portar tela a tela do `app.js`, começando pelas ações "funcionando hoje"
-   antes de implementar as quebradas do zero.
+Schema desenhado em [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql),
+com base no mapeamento de colunas real extraído do `Code.gs` antigo (não só
+do `app.js`). Pontos relevantes descobertos nessa leitura:
+
+- **Semana**: o sistema antigo calculava/recebia "semana" de 3 formas
+  diferentes e inconsistentes (client manda pronta, ora string ora número).
+  No novo schema, `semana` nunca é aceita como entrada — é sempre uma
+  coluna gerada a partir da data (`semana_legado(data)`, réplica de
+  `getSemanaNum_`/`WEEKNUM(data,2)` do Sheets).
+- **Colunas O/P de Decisões** (status de integração, nome da equipe) eram
+  fórmulas `ARRAYFORMULA`/`PROCX` derivadas, não dados gravados — viraram a
+  view `v_decisoes_status`, não uma coluna persistida.
+- **Abas `Aniv` e `Rel_Presença`** duplicavam dados já existentes em
+  `Cadastro`/`Presença` (fonte de bugs de dessincronização) — viraram views
+  (`v_aniversarios`) em vez de tabelas próprias.
+- **Presença tinha 2 regras de duplicata diferentes** (`gravarPresenca_`
+  deduplicava por matrícula+semana; `verificarPresenca_` checava por
+  matrícula+data). Fixamos uma regra única no banco: `UNIQUE(membro_id,
+  semana)`.
+- **Aba `Historico_Integracao`**: só era lida no sistema antigo, nunca
+  escrita por `Code.gs` — não recebeu tabela própria; vira query/view
+  quando a tela de relatório for implementada.
+- **Aba `Anual`**: não encontrada em nenhuma referência do `Code.gs` —
+  confirmar se ainda é necessária antes de desenhar (pode ter sido
+  descontinuada ou estar em outro arquivo do projeto Apps Script).
+- **Coluna F de Cadastro**: o layout usado de forma consistente no
+  `Code.gs` (comentários + uso real em `snapshotSemanal`, `lerUsuarios_`
+  etc.) é `F=Senha`. Mantido como `senha_hash` (bcrypt) no novo schema, mas
+  **ainda vale confirmar na planilha real** — a ambiguidade original vinha
+  de uma função específica (`lerCadastro_`) tratando esse índice como
+  usuário.
+- **Aba Equipes**: confirmado que o backend antigo (`lerEquipes_`) só
+  expõe o nome (coluna B) — `hospital`, `dia_semana`, `lider_matricula`
+  são esperados pelo frontend mas **nunca foram implementados de fato**.
+  Essas colunas nascem `NULL` na tabela `equipes` até confirmação/uso da
+  tela de gestão de equipes (a ser implementada do zero).
+- **Auth/RLS**: como o login não usa Supabase Auth nativo, a decisão foi
+  ter uma Edge Function que valida matrícula/senha (bcrypt) e emite um JWT
+  compatível com o projeto Supabase, com claims custom (`membro_id`,
+  `perfil`). As policies de RLS leem esse claim via `auth.jwt()` — RLS real
+  por linha, não apenas checagem em código.
+
+## Status atual (infraestrutura pronta)
+
+- ✅ Projeto Supabase criado; `0001_init.sql` e `0002_rls.sql` aplicados.
+- ✅ Import rodado contra os CSVs reais: **165 membros**, **33 equipes**,
+  **249 vínculos** membro-equipe (`npm run import:all`, scripts em
+  `scripts/import-*.mjs` e `scripts/link-membro-equipe.mjs`). 4 nomes de
+  equipe em Cadastro ficaram sem vínculo por inconsistência real da
+  planilha antiga (time renomeado/horário mudou/descontinuado) — não
+  resolvidos automaticamente de propósito, ver histórico de conversa ou
+  rodar `scripts/link-membro-equipe.mjs` de novo para ver os avisos.
+- ✅ Edge Function de login (`supabase/functions/login`) implementada e em
+  produção: recebe `{matricula, senha}`, valida contra `senha_hash`
+  (bcrypt) e devolve um JWT HS256 assinado com o Legacy JWT Secret do
+  projeto, com claims `membro_id`/`matricula`/`perfil`. Deploy via
+  `node scripts/deploy-function.mjs login` (usa `SUPABASE_ACCESS_TOKEN` +
+  `SUPABASE_PROJECT_REF` + `JWT_SECRET` do `.env`).
+- ✅ RLS testado ponta a ponta (`node scripts/test-login.mjs <matricula>
+  <senha>`): login funciona, cada membro lê a própria linha, `senha_hash`
+  é bloqueada mesmo pro dono da linha (revoke de coluna), leitura de
+  `equipes` liberada pra qualquer autenticado.
+- Regra de RLS adotada: liderança (`perfil` = 'Líder'/'Capelão') vê e edita
+  tudo em decisões/integração/presença/resumos; membro comum só vê/edita o
+  que é seu. Ver comentário no topo de `0002_rls.sql` pra ajustar por tela.
+- ✅ **Frontend em `frontend/`**: cópia do `app.js`/`index.html` antigo com a
+  camada de dados trocada. Portado e testado num navegador de verdade
+  (Playwright headless, `npm run test:browser`): **login** (Edge Function +
+  seleção de equipe quando o membro tem mais de uma), **Cadastro**
+  (listagem dos 139 membros ativos + busca + detalhe individual) e
+  **Equipes** (listagem das 33 equipes). `frontend/supabase-client.js`
+  concentra a ponte com o Supabase e adapta os nomes de campo do schema
+  novo pro formato que o `app.js` antigo espera (`nomeComp`, `sit`, `pin`
+  etc.), pra não precisar reescrever as telas de exibição.
+  `npm run dev` sobe um servidor estático local em `:8123` pra testar.
+- ✅ **Decisões portado e testado** (`npm run test:browser` +
+  `node scripts/browser-test-decisoes.mjs`, fluxo completo: criar → listar
+  → editar → excluir). Diferenças importantes em relação ao sistema antigo:
+  - `editarDecisao`/`excluirDecisao` **funcionam de verdade agora** — no
+    sistema antigo o front chamava essas ações mas o backend nunca as
+    implementou (bug #3 do README); aqui viram `UPDATE`/`DELETE` reais na
+    tabela `decisoes`, protegidos por RLS (só o próprio capelão ou
+    liderança podem editar/excluir).
+  - A checagem de duplicata (mesmo telefone + semana) agora tem defesa real
+    no banco (`decisoes_telefone_semana_uniq`), não só no cliente — o
+    `supaGravarDecisao`/`supaEditarDecisao` detectam o erro `23505` do
+    Postgres e mostram a mesma mensagem amigável de antes.
+  - `semana` nunca é calculada/enviada pelo cliente — é sempre derivada de
+    `data_visita` pela coluna gerada no banco (`semana_legado`), eliminando
+    a inconsistência de tipos do sistema antigo (bug documentado na seção
+    "Schema definitivo").
+  - O app.js legado tinha `loadDecSemana`/`openFormDec` **duplicados**
+    (declarações repetidas, a segunda sobrescrevia a primeira em runtime) —
+    removido o código morto durante o port.
+  - Corrigido também um bug de escaping de aspas num `onerror` inline
+    (`updateBannerFoto`) que gerava `SyntaxError` quando a foto do avatar
+    falhava ao carregar — não é específico de Decisões, apareceu durante os
+    testes de login.
+- ✅ **Integração portado e testado** (`node scripts/browser-test-integracao.mjs`,
+  fluxo completo: criar decisão com integração → distribuir → aparece na
+  fila → registrar integração). Pontos relevantes:
+  - **`decisoes` SELECT foi reaberto pra qualquer autenticado**
+    (`0003_integracao.sql`) — o `0002_rls.sql` original restringia a
+    leitura ao próprio capelão + liderança, mas o `lerDecisoesSemana_` do
+    sistema antigo sempre devolveu as decisões de **todos** os capelães
+    pra qualquer usuário logado (é uma tela de equipe, não pessoal). A
+    tela de Integração depende disso pra funcionar (join com a decisão
+    original de outro capelão). UPDATE/DELETE continuam restritos.
+  - **`integracoes`/`resultado_integracao` abertos pra qualquer
+    autenticado** marcar como integrado — confirmado com o usuário que é
+    o comportamento real do sistema antigo (time colaborativo, qualquer
+    um pode cobrir a integração de um colega).
+  - **Round-robin de distribuição portado como function SQL**
+    (`distribuir_integracoes()`), substituindo o `snapshotSemanal` do
+    sistema antigo (que rodava via trigger de domingo 23h55, nunca
+    portado). Mesma regra: separa integradores ativos por sexo, pareia
+    com o sexo do assistido, fallback pro outro sexo se a lista preferida
+    estiver vazia. Só liderança pode disparar (`SECURITY DEFINER` +
+    checagem de perfil dentro da function); por enquanto é manual (botão
+    🔀 no header da tela, só visível pra Líder) — agendar via `pg_cron`
+    fica pra depois.
+  - `resultado_integracao.capelao_id` agora registra **quem de fato
+    clicou** pra confirmar (via RLS/sessão), não mais um campo de texto
+    solto que podia ser qualquer nome como no sistema antigo.
+  - `scripts/apply-migration.mjs` (`npm run migrate -- <arquivo>`):
+    descoberto que dá pra aplicar migrations direto pela Management API
+    do Supabase (`SUPABASE_ACCESS_TOKEN`), sem precisar colar no SQL
+    Editor manualmente — usado a partir da migration 0003.
+- ✅ **Presença (check-in do dia) portado e testado**
+  (`node scripts/browser-test-presenca.mjs`: registra, persiste após
+  reload, detecta duplicata). É o botão de presença no banner da home
+  (`verificarPresencaHoje`/`registrarPresenca`), não a tela de gestão —
+  essa fica em `Relatórios` (`atualizarRelPresenca`/`Rel_Presença`), ainda
+  não portada. Diferença do sistema antigo: as duas regras de duplicata
+  inconsistentes (`gravarPresenca_` checava matrícula+semana,
+  `verificarPresenca_` checava matrícula+data) viraram uma regra única
+  (membro+semana, já fixada no schema desde `0001_init.sql`) — verificar e
+  registrar agora sempre olham pra mesma coisa.
+- ✅ **Resumo (Líder) portado e testado**
+  (`node scripts/browser-test-resumo.mjs`: criar, listar agrupado por
+  dia/equipe, abrir detalhe). Upload de foto continua indo direto pro
+  Cloudinary do frontend (sem passar pelo Supabase) — isso já era assim no
+  sistema antigo e não precisou mudar. `lancadas`/`saldo` continuam sendo
+  um snapshot calculado no momento de salvar (não um valor sempre live),
+  igual ao `gravarResumo_` original; salvar duas vezes pra mesma
+  data+equipe substitui o registro (`upsert` em `(data_visita,
+  equipe_id)`), igual ao comportamento antigo de "achar e sobrescrever".
+- ✅ **Relatórios (Líder) portado e testado inteiro** — as 4 sub-abas, uma
+  de cada vez, cada uma com seu próprio script de teste
+  (`browser-test-rel-semana.mjs`, `-historico.mjs`, `-presenca.mjs`,
+  `-anual.mjs`). Todas as 3 ações que nunca tinham sido implementadas no
+  sistema antigo (`lerRelatorioSemana`, `lerRelatorioAnual`,
+  `lerRelatorioPresenca` — bugs #4 do README) viraram implementações
+  novas, direto em cima das tabelas já existentes, sem tabela de
+  agregação própria:
+  - **Semana**: total de decisões, quebra por sexo, integráveis vs. não
+    (com motivos), tudo calculado em JS a partir de um único select em
+    `decisoes` (join `integracoes` pro status).
+  - **Histórico**: desempenho de cada integrador nas últimas 8 semanas
+    (calendário, não "últimas semanas com dado" como a leitura antiga de
+    `Historico_Integracao` — mais previsível). Substitui uma tabela que no
+    sistema antigo nunca foi escrita por nenhuma ação do app (só leitura,
+    fonte externa/manual).
+  - **Presença**: grade membro × semana por equipe, calculada ao vivo em
+    cima de `presenca`/`membro_equipe`. Elimina o conceito de
+    "reconstruir" — no sistema antigo, `atualizarRelPresenca` regravava
+    fisicamente a aba `Rel_Presença`; aqui não há mais nada pra
+    reconstruir, o botão só recarrega a consulta.
+  - **Anual**: comparativo de decisões por mês, ano atual vs. anterior,
+    agregado em cima de `decisoes.data_visita`.
+- ✅ **Conta (mudar senha / validar matrícula) portado e testado**
+  (`node scripts/browser-test-conta.mjs`: senha atual errada rejeitada,
+  senha certa aceita e persistida, login com senha antiga passa a falhar,
+  login com a nova funciona). Nova Edge Function `supabase/functions/
+  mudar-senha`: exige o token de login válido (Bearer), confere a senha
+  atual via bcrypt e grava o novo hash — é a única rota que enxerga
+  `senha_hash`, igual à `login`. Criado `supabase/functions/_shared/jwt.ts`
+  com assinar/verificar JWT compartilhado entre as duas functions (a
+  `login` foi refatorada pra usar o mesmo módulo). `resetSenha` foi
+  removida — confirmado que era código morto no sistema antigo, nunca
+  chamada por nenhum botão. `validarMatricula` não precisou de Edge
+  Function (é só um select simples, já liberado por RLS).
+- ✅ **Aniversários portado e testado** — mapeia direto pra view
+  `v_aniversarios` (já existia desde `0001_init.sql`), sem precisar de
+  nenhuma função nova.
+- ✅ **Fotos portado e testado** (`node scripts/browser-test-foto.mjs`,
+  upload real confirmado no banco). O upload em si (Cloudinary, direto do
+  navegador) já funcionava mesmo no sistema antigo e não mudou — o que
+  faltava era salvar a URL resultante no membro certo, que chamava
+  `atualizar('Cadastro', ...)` (backend antigo, morto). Também corrigido:
+  a RLS de `membros` só deixava cada um editar a própria linha
+  (`0004_membros_lideranca.sql`) — o botão de câmera é só-Líder e edita a
+  foto de **qualquer** membro, então a policy de UPDATE precisou abrir
+  pra liderança também, igual foi feito antes pra `decisoes`/`equipes`.
+- ✅ **Gestão de Equipes (CRUD) portado e testado**
+  (`node scripts/browser-test-equipes-crud.mjs`: criar, editar, detectar
+  nome duplicado, excluir). Era a última categoria "quebrada" do sistema
+  antigo (`salvarEquipe`/`atualizarEquipe`/`excluirEquipe` nunca tiveram
+  case correspondente no backend) — implementada do zero. O campo de
+  líder no formulário continua sendo a matrícula digitada em texto livre
+  (igual ao antigo), resolvida pra um `lider_id` real no momento de salvar;
+  matrícula não encontrada não bloqueia o salvamento, só avisa que ficou
+  sem líder vinculado. Excluir uma equipe não apaga os membros, só o
+  vínculo (`membro_equipe` tem `on delete cascade` na FK de equipe).
+
+## Status: todas as telas do inventário original portadas
+
+Todo o inventário do README original — as ações "funcionando hoje" e as
+"quebradas" — foi portado e testado num navegador de verdade. Não há mais
+nenhuma tela chamando o `SCRIPT` (Apps Script) antigo.
+
+## Próximos passos (não bloqueiam uso, mas valem revisão)
+
+1. Resolver os 4 vínculos membro-equipe pendentes da importação original
+   (nomes de equipe que mudaram de horário/dia na planilha desde o
+   import) — a critério de quem gerencia as equipes hoje, agora que a
+   tela de gestão já funciona.
+2. Agendar `distribuir_integracoes()` via `pg_cron` (hoje é manual, botão
+   🔀 na tela de Integração) pra recuperar o comportamento automático de
+   domingo 23h55 do `snapshotSemanal` antigo, se ainda for desejado.
+3. Decidir se o app vai continuar como está (matrícula/senha + JWT
+   próprio) ou se compensa migrar pra Supabase Auth nativo no futuro —
+   não é urgente, mas é uma dívida arquitetural conhecida.
+4. Revisar a lista de erros de console conhecidos e não-bloqueantes: (a)
+   fotos hospedadas no Google Drive não resolvem em ambientes sem acesso
+   a `lh3.google.com` (irrelevante em produção real); (b) uma condição de
+   corrida cosmética quando uma imagem falha ao carregar bem no momento
+   em que a tela já mudou (handler `onerror` tenta atualizar um elemento
+   que não existe mais) — não trava nada, só polui o console.
+5. Deploy do frontend (hoje só roda local via `npm run dev`) — GitHub
+   Pages é a opção mais simples, como já era antes.

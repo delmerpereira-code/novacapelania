@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f2744">
+<link rel="manifest" href="manifest.json">
+<title>Capelania</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0f2744;--navy2:#1a3a5c;--blue:#2563eb;
+  --gold:#f59e0b;--gold2:#fcd34d;
+  --red:#ef4444;--green:#22c55e;
+  --g0:#f8fafc;--g1:#f1f5f9;--g2:#e2e8f0;
+  --g3:#cbd5e1;--g4:#94a3b8;--g5:#64748b;--g6:#334155;
+  --text:#0f172a;--r:12px;--r2:18px;
+  --nav:64px;--hdr:56px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:var(--navy)}
+
+/* ── SCREENS ── */
+.sc{position:fixed;inset:0;display:none;flex-direction:column;background:var(--g0);overflow:hidden}
+.sc.on{display:flex}
+#sc-login{background:var(--navy);justify-content:center;align-items:center;padding:32px 24px 48px;overflow-y:auto}
+
+/* ── LOGIN ── */
+.brand{text-align:center;margin-bottom:36px}
+.cross{width:52px;height:52px;position:relative;margin:0 auto 14px}
+.cross::before,.cross::after{content:'';position:absolute;background:var(--gold);border-radius:3px}
+.cross::before{width:12px;height:52px;left:20px;top:0}
+.cross::after{width:38px;height:12px;left:7px;top:16px}
+.brand h1{font-family:'DM Serif Display',serif;font-size:28px;color:#fff;letter-spacing:.5px}
+.brand p{font-size:12px;color:rgba(255,255,255,.4);margin-top:4px;text-transform:uppercase;letter-spacing:1.5px}
+.login-box{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:var(--r2);padding:28px 22px;width:100%;max-width:380px}
+.lf{margin-bottom:16px}
+.lf label{display:block;font-size:11px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.lf input,.lf select{width:100%;height:54px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:var(--r);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:16px;color:#fff;outline:none;-webkit-appearance:none;transition:border-color .2s}
+.lf input::placeholder{color:rgba(255,255,255,.2)}
+.lf input:focus,.lf select:focus{border-color:var(--gold)}
+.lf .sel-wrap{position:relative}
+.lf .sel-wrap::after{content:'▾';position:absolute;right:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.35);pointer-events:none}
+.lf select option{background:var(--navy);color:#fff}
+.lerr{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:var(--r);padding:10px 14px;font-size:13px;color:#fca5a5;margin-bottom:14px;display:none}
+.lbtn{width:100%;height:54px;background:var(--gold);border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:16px;font-weight:700;color:var(--navy);cursor:pointer;margin-top:4px;transition:opacity .15s,transform .1s}
+.lbtn:active{transform:scale(.98);opacity:.9}
+
+/* ── HEADER ── */
+.hdr{height:var(--hdr);background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0;z-index:10}
+.hdr-back{width:40px;height:40px;border:none;background:rgba(255,255,255,.1);border-radius:50%;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.hdr-title{font-family:'DM Serif Display',serif;font-size:18px;color:#fff}
+.hdr-btn{height:34px;padding:0 14px;border:1px solid rgba(255,255,255,.2);border-radius:17px;background:transparent;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer}
+.hdr-btn.gold{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:700}
+
+/* ── NAV ── */
+.nav{height:var(--nav);background:#fff;border-top:1px solid var(--g2);display:flex;flex-shrink:0}
+.nb{flex:1;border:none;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--g4);font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;cursor:pointer;transition:color .15s}
+.nb .ni{font-size:22px;line-height:1}
+.nb.on{color:var(--blue)}
+
+/* ── SCROLL ── */
+.pg{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(var(--nav) + 20px)}
+
+/* ── HOME ── */
+.banner{background:linear-gradient(135deg,var(--navy),var(--navy2));border-radius:var(--r2);padding:20px;margin-bottom:20px;position:relative;overflow:hidden}
+.banner::after{content:'✝';position:absolute;right:-8px;top:-8px;font-size:90px;color:rgba(255,255,255,.04);line-height:1;pointer-events:none}
+.ban-hi{font-size:12px;color:rgba(255,255,255,.5);margin-bottom:4px}
+.ban-name{font-family:'DM Serif Display',serif;font-size:22px;color:#fff;margin-bottom:6px}
+.ban-eq{font-size:12px;color:var(--gold2);margin-bottom:14px}
+.ban-chips{display:flex;gap:8px;flex-wrap:wrap}
+.ban-chip{background:rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;font-size:12px;color:rgba(255,255,255,.8);line-height:1.4}
+.ban-chip strong{display:block;color:#fff;font-size:14px}
+
+.sec-title{font-size:11px;font-weight:700;color:var(--g5);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px}
+.mods{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mod{background:#fff;border-radius:var(--r2);padding:16px 14px;cursor:pointer;border:1.5px solid var(--g2);display:flex;align-items:center;gap:10px;transition:border-color .15s,transform .1s}
+.mod:active{transform:scale(.96);border-color:var(--blue)}
+.mod .mico{font-size:26px;flex-shrink:0}
+.mod .mlbl{font-size:14px;font-weight:600;color:var(--navy);line-height:1.2}
+
+/* ── CARDS ── */
+.card{background:#fff;border-radius:var(--r2);padding:18px;margin-bottom:12px;border:1.5px solid var(--g2)}
+.card-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:16px}
+
+/* ── FIELDS ── */
+.f{margin-bottom:14px}
+.f label{display:block;font-size:11px;font-weight:700;color:var(--g5);text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px}
+.f input,.f select,.f textarea{width:100%;min-height:52px;border:1.5px solid var(--g2);border-radius:var(--r);padding:0 14px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--text);background:#fff;outline:none;-webkit-appearance:none;transition:border-color .2s}
+.f textarea{padding:14px;min-height:auto;resize:none}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.f .sel-wrap{position:relative}
+.f .sel-wrap::after{content:'▾';position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--g4);pointer-events:none}
+
+/* ── TOGGLE ── */
+.tg{display:flex;border:1.5px solid var(--g2);border-radius:var(--r);overflow:hidden}
+.tb{flex:1;height:52px;border:none;background:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;color:var(--g5);cursor:pointer;transition:all .15s}
+.tb.on{background:var(--navy);color:#fff;font-weight:700}
+.tb+.tb{border-left:1.5px solid var(--g2)}
+
+/* ── BUTTONS ── */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:52px;border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:16px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s}
+.btn:active{transform:scale(.97);opacity:.9}
+.btn-p{background:var(--navy);color:#fff}
+.btn-o{background:transparent;color:var(--blue);border:1.5px solid var(--blue)}
+.btn-g{background:var(--green);color:#fff}
+.btn-r{background:var(--red);color:#fff}
+.btn-row{display:flex;gap:10px}.btn-row .btn{flex:1}
+
+/* ── INFO STRIP (decisões) ── */
+.strip{background:var(--navy);border-radius:var(--r);padding:12px 16px;margin-bottom:16px}
+.strip-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0}
+.strip-k{font-size:11px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.8px}
+.strip-v{font-size:13px;font-weight:600;color:#fff;text-align:right;max-width:200px}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.bg-g{background:#dcfce7;color:#15803d}
+.bg-y{background:#fef3c7;color:#92400e}
+.bg-r{background:#fee2e2;color:#991b1b}
+.bg-b{background:#dbeafe;color:#1d4ed8}
+
+/* ── CADASTRO LISTA ── */
+.search{position:relative;margin-bottom:12px}
+.search input{width:100%;height:48px;background:#fff;border:1.5px solid var(--g2);border-radius:var(--r);padding:0 14px 0 42px;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--text);outline:none}
+.search input:focus{border-color:var(--blue)}
+.search::before{content:'🔍';position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;margin-bottom:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{height:34px;padding:0 14px;border-radius:17px;border:1.5px solid var(--g2);background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--g5);white-space:nowrap;cursor:pointer;flex-shrink:0;transition:all .15s}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.eq-hdr{font-size:11px;font-weight:700;color:var(--g4);text-transform:uppercase;letter-spacing:1px;padding:14px 0 8px;display:flex;align-items:center;justify-content:space-between}
+.eq-cnt{background:var(--navy);color:#fff;border-radius:10px;padding:2px 8px;font-size:11px}
+.mrow{background:#fff;border-radius:var(--r);padding:12px;margin-bottom:6px;display:flex;align-items:center;gap:12px;border:1.5px solid var(--g2);cursor:pointer;transition:border-color .15s;-webkit-user-select:none}
+.mrow:active{border-color:var(--blue);background:var(--g0)}
+.av{width:44px;height:44px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;overflow:hidden}
+.av img{width:100%;height:100%;object-fit:cover}
+.mname{font-size:15px;font-weight:600;color:var(--navy)}
+.fab{position:fixed;bottom:calc(var(--nav) + 16px);right:16px;width:54px;height:54px;border-radius:50%;background:var(--navy);color:#fff;border:none;font-size:26px;cursor:pointer;box-shadow:0 4px 20px rgba(15,39,68,.4);display:flex;align-items:center;justify-content:center;z-index:50}
+.fab:active{transform:scale(.92)}
+
+/* ── MEMBRO HERO ── */
+.hero{background:var(--navy);padding:20px 16px;flex-shrink:0}
+.av-lg{width:68px;height:68px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;border:2px solid rgba(255,255,255,.2);margin-bottom:12px;overflow:hidden}
+.av-lg img{width:100%;height:100%;object-fit:cover}
+.hero-name{font-family:'DM Serif Display',serif;font-size:20px;color:#fff;margin-bottom:3px}
+.hero-id{font-size:12px;color:rgba(255,255,255,.4)}
+
+/* ── TABS ── */
+.tabs{background:#fff;border-bottom:1px solid var(--g2);display:flex;flex-shrink:0}
+.tab{flex:1;height:44px;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--g4);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tab.on{color:var(--navy);border-bottom-color:var(--navy)}
+.pane{display:none}.pane.on{display:block}
+
+/* ── DETAIL ROWS ── */
+.dg{background:#fff;border-radius:var(--r2);overflow:hidden;border:1.5px solid var(--g2);margin-bottom:12px}
+.dr{display:flex;padding:13px 16px;border-bottom:1px solid var(--g1);align-items:flex-start;gap:10px}
+.dr:last-child{border-bottom:none}
+.dk{font-size:12px;color:var(--g4);font-weight:600;min-width:108px;padding-top:1px;flex-shrink:0}
+.dv{font-size:14px;color:var(--text);font-weight:500;flex:1;text-align:right;word-break:break-word}
+
+/* ── EQUIPES CHECKS ── */
+.eq-list{display:flex;flex-direction:column;gap:6px}
+.eq-item{display:flex;align-items:center;gap:14px;padding:16px;background:#fff;border-radius:var(--r);border:1.5px solid var(--g2);cursor:pointer;-webkit-user-select:none;user-select:none;transition:border-color .15s}
+.eq-item.on{border-color:var(--blue);background:#eff6ff}
+.eq-box{width:26px;height:26px;border-radius:6px;border:2px solid var(--g3);background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;font-size:14px;font-weight:700;color:transparent}
+.eq-item.on .eq-box{background:var(--blue);border-color:var(--blue);color:#fff}
+.eq-lbl{font-size:14px;font-weight:500;color:var(--text);line-height:1.3}
+
+/* ── SHEET MODAL ── */
+.shov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;z-index:200}
+.shov.on{display:flex}
+.sh{background:var(--g0);border-radius:20px 20px 0 0;width:100%;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:up .25s ease;padding-bottom:40px}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sh-bar{width:36px;height:4px;background:var(--g3);border-radius:2px;margin:12px auto 16px}
+.sh-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--navy);padding:0 20px 14px}
+.sh-body{padding:0 20px}
+
+/* ── LOADING / TOAST ── */
+.lov{position:fixed;inset:0;background:rgba(15,39,68,.82);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
+.lov.on{display:flex}
+.spin{width:46px;height:46px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--gold);border-radius:50%;animation:sp .7s linear infinite;margin-bottom:14px}
+.lov p{color:#fff;font-size:14px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:calc(var(--nav) + 10px);left:50%;transform:translateX(-50%) translateY(10px);background:var(--g6);color:#fff;padding:11px 20px;border-radius:22px;font-size:14px;font-weight:500;opacity:0;transition:all .25s;z-index:900;max-width:88vw;text-align:center;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{background:#15803d}.toast.er{background:#b91c1c}
+
+/* ── VAZIO ── */
+.empty{text-align:center;padding:48px 20px;color:var(--g4)}
+.empty .ei{font-size:40px;margin-bottom:12px}
+.empty p{font-size:15px}
+
+/* ── ACCORDION ── */
+.acc-hdr{background:#fff;border-radius:var(--r);padding:14px 16px;margin-bottom:6px;border:1.5px solid var(--g2);display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:border-color .15s;-webkit-user-select:none;user-select:none}
+.acc-hdr.on{border-color:var(--blue);background:#eff6ff;border-radius:var(--r) var(--r) 0 0;margin-bottom:0}
+.acc-hdr-left{display:flex;align-items:center;gap:10px}
+.acc-hdr-eq{font-size:14px;font-weight:600;color:var(--navy)}
+.acc-cnt{background:var(--navy);color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700}
+.acc-arr{color:var(--g4);font-size:14px;transition:transform .2s}
+.acc-hdr.on .acc-arr{transform:rotate(180deg)}
+.acc-body{background:var(--g0);border:1.5px solid var(--blue);border-top:none;border-radius:0 0 var(--r) var(--r);padding:10px;margin-bottom:8px;display:none}
+.acc-body.on{display:block}
+.dec-item{background:#fff;border-radius:10px;padding:11px 14px;margin-bottom:6px;border:1px solid var(--g2)}
+.dec-name{font-size:14px;font-weight:600;color:var(--navy)}
+.dec-sub{font-size:12px;color:var(--g4);margin-top:3px}
+
+/* ── FOTO ── */
+.foto-wrap{position:relative;width:72px;height:72px;margin-bottom:12px}
+.foto-av{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;border:2px solid rgba(255,255,255,.2);overflow:hidden;cursor:pointer}
+.foto-av img{width:100%;height:100%;object-fit:cover}
+.foto-cam{position:absolute;bottom:0;right:0;width:24px;height:24px;border-radius:50%;background:var(--gold);border:2px solid var(--navy);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
+.foto-loading{position:absolute;inset:0;border-radius:50%;background:rgba(15,39,68,.7);display:none;align-items:center;justify-content:center;color:#fff;font-size:11px;text-align:center}
+.foto-loading.on{display:flex}
+
+/* ── BANNER FOTO ── */
+.ban-av{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;border:2px solid rgba(255,255,255,.2);overflow:hidden;flex-shrink:0}
+.ban-av img{width:100%;height:100%;object-fit:cover}
+</style>
+
+<style>
+.rel-tab-btn{flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--g2);background:none;color:var(--navy);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.rel-tab-on{background:var(--navy);color:#fff;border-color:var(--navy)}
+</style>
+</head>
+<body>
+
+<div class="lov" id="lov"><div class="spin"></div><p id="lov-p">Carregando...</p></div>
+<div class="toast" id="toast"></div>
+
+<!-- LOGIN -->
+<div class="sc on" id="sc-login">
+  <div class="brand">
+    <div class="cross"></div>
+    <h1>Capelania Nib</h1>
+    <p>Ministério Nova Capelania</p>
+  </div>
+  <div class="login-box">
+    <div class="lerr" id="lerr"></div>
+    <div class="lf"><label>Matrícula</label><input type="text" id="lu" placeholder="Ex: 12345" inputmode="numeric" autocomplete="off" onkeydown="if(event.key==='Enter') doLogin()"></div>
+    <div class="lf"><label>Senha</label><input type="password" id="lp" placeholder="••••••" inputmode="numeric" onkeydown="if(event.key==='Enter') doLogin()"></div>
+    <div class="lf" id="leqc" style="display:none">
+      <label>Equipe</label>
+      <div class="sel-wrap"><select id="leq"><option value="">Selecione sua equipe</option></select></div>
+    </div>
+    <button class="lbtn" id="lbtn" onclick="doLogin()">Verificar acesso</button>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="sc" id="sc-home">
+  <div class="hdr">
+    <div class="hdr-title">✝ Nova Capelania - Nova Igreja Batista</div>
+    <button class="hdr-btn" onclick="doSair()">Sair</button>
+  </div>
+  <div class="pg">
+    <div class="banner">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div class="ban-av" id="h-av" onclick="abrirMudarSenha()" style="cursor:pointer" title="Mudar senha">
+          <span id="h-av-ini"></span>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="ban-hi">Bem-vindo(a) 🙏</div>
+          <div class="ban-name" id="h-name"></div>
+          <div class="ban-eq" id="h-eq"></div>
+        </div>
+        <!-- BOTÃO PRESENÇA -->
+        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <button id="btn-presenca" onclick="registrarPresenca()"
+            style="width:48px;height:48px;border-radius:50%;border:2px solid rgba(255,255,255,.25);
+                   background:rgba(255,255,255,.1);color:#fff;font-size:22px;cursor:pointer;
+                   display:flex;align-items:center;justify-content:center;transition:all .2s"
+            title="Registrar presença">📋</button>
+          <span id="presenca-label" style="font-size:9px;color:rgba(255,255,255,.6);text-align:center;line-height:1.2;max-width:52px"></span>
+        </div>
+      </div>
+      <div class="ban-chips" style="margin-top:14px">
+        <div class="ban-chip"><strong id="h-dv"></strong>Data da visita</div>
+        <div class="ban-chip"><strong id="h-sw"></strong>Semana</div>
+      </div>
+    </div>
+    <div class="sec-title">Módulos</div>
+    <div class="mods" id="mods"></div>
+  </div>
+  <nav class="nav">
+    <button class="nb on" onclick="ir('home',0,this)"><span class="ni">🏠</span>Início</button>
+    <button class="nb" onclick="ir('decisoes',1,this)"><span class="ni">✝</span>Decisões</button>
+    <button class="nb" onclick="ir('integracao',2,this)"><span class="ni">🔗</span>Integração</button>
+    <button class="nb" onclick="ir('aniversarios',3,this)"><span class="ni">🎂</span>Aniversários</button>
+  </nav>
+</div>
+
+<!-- DECISÕES LISTA -->
+<div class="sc" id="sc-decisoes">
+  <div class="hdr">
+    <button class="hdr-back" onclick="ir('home')">←</button>
+    <div class="hdr-title">Decisões</div>
+    <div style="width:40px"></div>
+  </div>
+  <div class="pg">
+    <div class="strip">
+      <div class="strip-row"><span class="strip-k">📅 Semana</span><span class="strip-v" id="d-sw"></span></div>
+      <div class="strip-row"><span class="strip-k">✝ Total semana</span><span class="strip-v" id="d-total">0</span></div>
+    </div>
+    <div id="d-lista-semana">
+      <div class="empty"><div class="ei">✝</div><p>Carregando...</p></div>
+    </div>
+  </div>
+  <button class="fab" onclick="openFormDec()">+</button>
+  <nav class="nav">
+    <button class="nb" onclick="ir('home',0,this)"><span class="ni">🏠</span>Início</button>
+    <button class="nb on" onclick="ir('decisoes',1,this)"><span class="ni">✝</span>Decisões</button>
+    <button class="nb" onclick="ir('integracao',2,this)"><span class="ni">🔗</span>Integração</button>
+    <button class="nb" onclick="ir('aniversarios',3,this)"><span class="ni">🎂</span>Aniversários</button>
+  </nav>
+</div>
+
+<!-- DECISÕES FORMULÁRIO (sheet) -->
+<!-- EDITAR DECISÃO -->
+<div class="shov" id="sh-edit-dec">
+  <div class="sh">
+    <div class="sh-bar"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px 14px">
+      <div class="sh-title" style="padding:0">Editar Decisão</div>
+      <button onclick="$('sh-edit-dec').classList.remove('on')" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--g2);color:var(--g6);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+    </div>
+    <div style="padding:0 20px 24px;display:flex;flex-direction:column;gap:16px">
+      <div class="f"><label>Assistido *</label>
+        <div class="tg"><button class="tb" id="ed-pac" onclick="togEdit('assistido','Paciente',this)">Paciente</button><button class="tb" id="ed-vis" onclick="togEdit('assistido','Visitante',this)">Visitante</button></div>
+      </div>
+      <div class="f"><label>Sexo *</label>
+        <div class="tg"><button class="tb" id="ed-fem" onclick="togEdit('sexo','Feminino',this)">Feminino</button><button class="tb" id="ed-mas" onclick="togEdit('sexo','Masculino',this)">Masculino</button></div>
+      </div>
+      <div class="f"><label>Nome do Assistido *</label><input type="text" id="ed-nm" placeholder="Nome completo"></div>
+      <div class="f"><label>Realizar Integração? *</label>
+        <div class="tg"><button class="tb" id="ed-sim" onclick="setIntegEdit(true)">SIM</button><button class="tb" id="ed-nao" onclick="setIntegEdit(false)">NÃO</button></div>
+      </div>
+      <div class="f"><label>Telefone</label><input type="tel" id="ed-tel" placeholder="92981286628"></div>
+      <div class="f"><label>Observações</label><textarea id="ed-obs" rows="3" placeholder="Observações..."></textarea></div>
+      <button class="btn btn-p" onclick="salvarEditDec()" style="margin-bottom:16px">💾 Salvar Alterações</button>
+    </div>
+  </div>
+</div>
+
+<div class="shov" id="sh-dec">
+  <div class="sh">
+    <div class="sh-bar"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px 14px">
+      <div class="sh-title" style="padding:0">Nova Decisão</div>
+      <button onclick="fecharFormDec()" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--g2);color:var(--g6);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+    </div>
+    <div class="sh-body">
+      <div class="strip" style="margin-bottom:14px">
+        <div class="strip-row"><span class="strip-k">📅 Visita</span><span class="strip-v" id="d-dt"></span></div>
+        <div class="strip-row"><span class="strip-k">👤 Capelão</span><span class="strip-v" id="d-cp"></span></div>
+        <div class="strip-row"><span class="strip-k">🏥 Equipe</span><span class="strip-v" id="d-eq"></span></div>
+      </div>
+      <div class="f"><label>Assistido *</label>
+        <div class="tg"><button class="tb" onclick="tog('assistido','Paciente',this)">Paciente</button><button class="tb" onclick="tog('assistido','Visitante',this)">Visitante</button></div>
+      </div>
+      <div class="f">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <label style="margin:0">Sexo *</label>
+          <span id="d-sx-hint" style="font-size:11px;color:var(--g5);font-style:italic;display:none">✨ Sugerido pelo nome</span>
+        </div>
+        <div class="tg"><button class="tb" id="d-btn-fem" onclick="tog('sexo','Feminino',this)">Feminino</button><button class="tb" id="d-btn-mas" onclick="tog('sexo','Masculino',this)">Masculino</button></div>
+      </div>
+      <div class="f"><label>Nome do Assistido *</label><input type="text" id="d-nm" placeholder="Nome completo" autocomplete="off" onblur="sugerirSexo(this.value)"></div>
+      <div class="f"><label>Realizar Integração? *</label>
+        <div class="tg"><button class="tb" id="d-sim" onclick="setInteg(true)">SIM</button><button class="tb" id="d-nao" onclick="setInteg(false)">NÃO</button></div>
+      </div>
+      <div id="blk-sim" style="display:none">
+        <div class="f"><label>Telefone *</label><input type="tel" id="d-tel" inputmode="numeric" placeholder="92981286628" oninput="validarTelInput(this)" disabled style="background:var(--g1)"></div>
+        <div class="f"><label>Observações *</label><textarea id="d-obs" rows="3" placeholder="Ex: Sendo tratado por diabetes..."></textarea></div>
+      </div>
+      <div class="f" id="blk-nao">
+        <label>Motivo para não integrar *</label>
+        <div class="sel-wrap"><select id="d-mot">
+          <option value="">Selecione</option>
+          <option>Não tem telefone</option><option>Não tem interesse</option>
+          <option>Mora em outra cidade</option><option>Congrega em outra igreja</option>
+          <option>Sem mobilidade / Sem acesso à internet</option>
+          <option>Sem mobilidade / Deficiência visual ou auditiva</option>
+          <option>Sem mobilidade / Sem recursos</option>
+          <option>Não atende chamadas / Sem internet / Caixa Postal</option>
+          <option>Idosa comorbidade</option><option>Indigena</option>
+        </select></div>
+      </div>
+      <button class="btn btn-p" onclick="salvarDec()" style="margin-bottom:16px">💾 Salvar Decisão</button>
+      <!-- Lista de decisões da sessão -->
+      <div id="d-sessao" style="display:none">
+        <div style="font-size:11px;font-weight:700;color:var(--g5);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+          ✅ Lançadas esta visita (<span id="d-qtd">0</span>)
+        </div>
+        <div id="d-lista-sessao"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INTEGRAÇÃO LISTA -->
+<div class="sc" id="sc-integracao">
+  <div class="hdr">
+    <button class="hdr-back" onclick="ir('home')">←</button>
+    <div class="hdr-title">Integração</div>
+    <button id="btn-distribuir-integ" class="hdr-back" style="display:none" title="Distribuir decisões pendentes" onclick="distribuirIntegracoesPendentes()">🔀</button>
+  </div>
+  <div class="pg">
+    <div class="strip">
+      <div class="strip-row"><span class="strip-k">📅 Semana</span><span class="strip-v" id="i-sw"></span></div>
+      <div class="strip-row"><span class="strip-k">👥 Total</span><span class="strip-v" id="i-total">0</span></div>
+    </div>
+    <div class="search" style="margin-bottom:12px">
+      <input type="text" id="i-search" placeholder="Buscar nome..." oninput="renderIntegLista()" autocomplete="off">
+    </div>
+    <div id="i-chips" style="margin-bottom:12px"></div>
+    <div id="i-lista"><div class="empty"><div class="ei">🔗</div><p>Carregando...</p></div></div>
+  </div>
+  <nav class="nav">
+    <button class="nb" onclick="ir('home',0,this)"><span class="ni">🏠</span>Início</button>
+    <button class="nb" onclick="ir('decisoes',1,this)"><span class="ni">✝</span>Decisões</button>
+    <button class="nb on" onclick="ir('integracao',2,this)"><span class="ni">🔗</span>Integração</button>
+    <button class="nb" onclick="ir('aniversarios',3,this)"><span class="ni">🎂</span>Aniversários</button>
+  </nav>
+</div>
+
+<!-- INTEGRAÇÃO DETALHE -->
+<div class="sc" id="sc-integ-det">
+  <div class="hdr" style="padding:0 8px">
+    <button class="hdr-back" onclick="ir('integracao')">←</button>
+    <!-- Setas de navegação -->
+    <button onclick="navInteg(-1)" id="btn-prev"
+      style="width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">‹</button>
+    <div style="flex:1;text-align:center;min-width:0">
+      <div class="hdr-title" id="nav-nome" style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px"></div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45)" id="nav-pos"></div>
+    </div>
+    <button onclick="navInteg(1)" id="btn-next"
+      style="width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">›</button>
+    <div style="width:8px"></div>
+  </div>
+  <div class="pg no-nav" style="padding-bottom:40px">
+
+    <!-- NOME DESTAQUE -->
+    <div style="background:var(--navy);border-radius:16px;padding:20px;margin-bottom:16px;text-align:center">
+      <div id="id-nm" style="font-family:'DM Serif Display',serif;font-size:26px;color:#fff;margin-bottom:6px"></div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">
+        <span id="id-integ" style="font-size:15px"></span>
+        <span id="id-as" style="font-size:14px;color:rgba(255,255,255,.6)"></span>
+      </div>
+    </div>
+
+    <!-- DADOS -->
+    <div class="dg" style="margin-bottom:16px">
+      <div class="dr"><span class="dk" style="font-size:16px">📅 Data Visita</span><span class="dv" id="id-dv" style="font-size:16px;font-weight:600"></span></div>
+      <div class="dr"><span class="dk" style="font-size:16px">🏥 Hospital</span><span class="dv" id="id-eq" style="font-size:16px;font-weight:600"></span></div>
+      <div class="dr"><span class="dk" style="font-size:16px">👤 Capelão</span><span class="dv" id="id-cp" style="font-size:16px;font-weight:600"></span></div>
+      <div class="dr"><span class="dk" style="font-size:16px">📞 Telefone</span><span class="dv" id="id-tel" style="font-size:18px;font-weight:700;color:var(--blue)"></span></div>
+      <div class="dr"><span class="dk" style="font-size:16px">📝 OBS</span><span class="dv" id="id-obs" style="font-size:15px;white-space:pre-line"></span></div>
+    </div>
+
+    <!-- BOTÕES DE AÇÃO -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <button onclick="abrirWpp1()" style="width:100%;border:none;border-radius:14px;padding:18px;background:#25d366;color:#fff;cursor:pointer;display:flex;align-items:center;gap:16px;text-align:left">
+        <span style="font-size:36px;line-height:1">🙏</span>
+        <div>
+          <div style="font-size:17px;font-weight:700;font-family:'DM Sans',sans-serif">Mensagem de Acompanhamento</div>
+          <div style="font-size:13px;opacity:.85;font-family:'DM Sans',sans-serif;margin-top:2px">Saber como está + convite Um com Deus</div>
+        </div>
+      </button>
+
+      <button onclick="abrirWpp2()" style="width:100%;border:none;border-radius:14px;padding:18px;background:#128c7e;color:#fff;cursor:pointer;display:flex;align-items:center;gap:16px;text-align:left">
+        <span style="font-size:36px;line-height:1">⛪</span>
+        <div>
+          <div style="font-size:17px;font-weight:700;font-family:'DM Sans',sans-serif">Convite Um com Deus</div>
+          <div style="font-size:13px;opacity:.85;font-family:'DM Sans',sans-serif;margin-top:2px">Endereço, horários e YouTube</div>
+        </div>
+      </button>
+
+      <button id="btn-integ-reg" onclick="registrarIntegracao()" style="width:100%;border:none;border-radius:14px;padding:18px;background:var(--navy);color:#fff;cursor:pointer;display:flex;align-items:center;gap:16px;text-align:left">
+        <span style="font-size:36px;line-height:1">✅</span>
+        <div>
+          <div style="font-size:17px;font-weight:700;font-family:'DM Sans',sans-serif">Registrar Integração</div>
+          <div style="font-size:13px;opacity:.85;font-family:'DM Sans',sans-serif;margin-top:2px">Marcar como integrado no sistema</div>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ANIVERSÁRIOS -->
+<div class="sc" id="sc-aniversarios">
+  <div class="hdr">
+    <button class="hdr-back" onclick="ir('home')">←</button>
+    <div class="hdr-title">Aniversariantes</div>
+    <div style="width:40px"></div>
+  </div>
+  <div class="pg">
+    <div class="search" style="margin-bottom:12px">
+      <input type="text" id="aniv-search" placeholder="Buscar membro..." oninput="renderAniv()" autocomplete="off">
+    </div>
+    <div id="aniv-lista"><div class="empty"><div class="ei">🎂</div><p>Carregando...</p></div></div>
+  </div>
+  <nav class="nav">
+    <button class="nb" onclick="ir('home',0,this)"><span class="ni">🏠</span>Início</button>
+    <button class="nb" onclick="ir('decisoes',1,this)"><span class="ni">✝</span>Decisões</button>
+    <button class="nb" onclick="ir('integracao',2,this)"><span class="ni">🔗</span>Integração</button>
+    <button class="nb on" onclick="ir('aniversarios',3,this)"><span class="ni">🎂</span>Aniversários</button>
+  </nav>
+</div>
+
+<!-- CADASTRO LISTA -->
+<div class="sc" id="sc-cadastro">
+  <div class="hdr"><button class="hdr-back" onclick="ir('home')">←</button><div class="hdr-title">Cadastro</div><div style="width:40px"></div></div>
+  <div class="pg">
+    <div class="search"><input type="text" id="c-search" placeholder="Buscar membro..." oninput="renderCad()"></div>
+    <div class="chips" id="c-chips"></div>
+    <div id="c-list"><div class="empty"><div class="ei">👥</div><p>Carregando...</p></div></div>
+  </div>
+  <button class="fab" onclick="openNovo()">+</button>
+  <nav class="nav">
+    <button class="nb" onclick="ir('home',0,this)"><span class="ni">🏠</span>Início</button>
+    <button class="nb" onclick="ir('decisoes',1,this)"><span class="ni">✝</span>Decisões</button>
+    <button class="nb" onclick="ir('integracao',2,this)"><span class="ni">🔗</span>Integração</button>
+    <button class="nb" onclick="ir('aniversarios',3,this)"><span class="ni">🎂</span>Aniversários</button>
+  </nav>
+</div>
+
+<!-- MEMBRO DETALHE -->
+<div class="sc" id="sc-membro">
+  <div class="hero">
+    <button class="hdr-back" style="margin-bottom:14px" onclick="ir('cadastro')">←</button>
+    <div class="foto-wrap" id="foto-wrap-m">
+      <div class="av-lg" id="m-av"></div>
+      <div class="foto-cam" id="btn-cam-m" onclick="abrirCameraM()" style="display:none">📷</div>
+      <div class="foto-loading" id="foto-prog"><span>Salvando...</span></div>
+    </div>
+    <input type="file" id="foto-input-m" accept="image/*" style="display:none" onchange="onFotoChangeM(event)">
+    <div class="hero-name" id="m-name"></div>
+    <div class="hero-id" id="m-id"></div>
+    <div style="margin-top:10px"><span class="badge" id="m-badge"></span></div>
+  </div>
+  <div class="tabs">
+    <button class="tab on" onclick="setTab(0,this)">Dados</button>
+    <button class="tab" onclick="setTab(1,this)">Ministerial</button>
+    <button class="tab" onclick="setTab(2,this)">Equipes</button>
+  </div>
+  <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 100px">
+    <!-- PANE DADOS -->
+    <div class="pane on" id="p0">
+      <div id="v0">
+        <div class="dg">
+          <div class="dr"><span class="dk">Matrícula</span><span class="dv" id="v-pin"></span></div>
+          <div class="dr"><span class="dk">Nome Completo</span><span class="dv" id="v-nc"></span></div>
+
+          <div class="dr"><span class="dk">Sexo</span><span class="dv" id="v-sx"></span></div>
+          <div class="dr"><span class="dk">Telefone</span><span class="dv" id="v-tel"></span></div>
+          <div class="dr"><span class="dk">RG</span><span class="dv" id="v-rg"></span></div>
+          <div class="dr"><span class="dk">E-mail</span><span class="dv" id="v-em"></span></div>
+          <div class="dr"><span class="dk">Aniversário</span><span class="dv" id="v-an"></span></div>
+        </div>
+        <button class="btn btn-o" onclick="showEdit(0,true)" style="margin-bottom:10px">✏️ Editar dados</button>
+        <button class="btn" id="btn-sit" onclick="alterarSit()"></button>
+      </div>
+      <div id="e0" style="display:none">
+        <div class="card" style="padding:16px">
+          <div class="f"><label>Matrícula / PIN *</label><input type="tel" id="ep" inputmode="numeric"></div>
+          <div class="f"><label>Nome Completo *</label><input type="text" id="enc" autocomplete="off"></div>
+          <div class="f"><label>Nome Social *</label><input type="text" id="ens" autocomplete="off"></div>
+          <div class="f"><label>Sexo</label><div class="sel-wrap"><select id="esx">
+            <option value="">Selecione</option><option value="M">Masculino</option><option value="F">Feminino</option>
+          </select></div></div>
+          <div class="f"><label>Telefone</label><input type="tel" id="etel" inputmode="numeric"></div>
+          <div class="f"><label>RG</label><input type="text" id="erg" inputmode="numeric"></div>
+          <div class="f"><label>E-mail</label><input type="email" id="eem"></div>
+          <div class="f"><label>Aniversário (dd/mm)</label><input type="text" id="ean" placeholder="10/07" maxlength="5"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-o" onclick="showEdit(0,false)">Cancelar</button>
+          <button class="btn btn-p" onclick="salvarDados()">💾 Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANE MINISTERIAL -->
+    <div class="pane" id="p1">
+      <div id="v1">
+        <div class="dg">
+          <div class="dr"><span class="dk">Decl. Minist.</span><span class="dv" id="vm-dc"></span></div>
+          <div class="dr"><span class="dk">Líder GA</span><span class="dv" id="vm-lg"></span></div>
+          <div class="dr"><span class="dk">Um c/ Deus</span><span class="dv" id="vm-ucd"></span></div>
+          <div class="dr"><span class="dk">Batizado</span><span class="dv" id="vm-bat"></span></div>
+          <div class="dr"><span class="dk">Grupo GA</span><span class="dv" id="vm-grp"></span></div>
+          <div class="dr"><span class="dk">Culto</span><span class="dv" id="vm-clt"></span></div>
+          <div class="dr"><span class="dk">SENIB</span><span class="dv" id="vm-snb"></span></div>
+          <div class="dr"><span class="dk">Faz Integração</span><span class="dv" id="vm-fi"></span></div>
+          <div class="dr"><span class="dk">Situação</span><span class="dv" id="vm-sit"></span></div>
+          <div class="dr"><span class="dk">Perfil</span><span class="dv" id="vm-pf"></span></div>
+          <div class="dr"><span class="dk">Observações</span><span class="dv" id="vm-obs" style="white-space:pre-line"></span></div>
+        </div>
+        <button class="btn btn-o" onclick="showEdit(1,true)">✏️ Editar</button>
+      </div>
+      <div id="e1" style="display:none">
+        <div class="card" style="padding:16px">
+          <div class="f"><label>Decl. Ministério</label><div class="sel-wrap"><select id="edc">
+            <option value="">Selecione</option><option value="S">Sim</option><option value="N">Não</option>
+          </select></div></div>
+          <div class="f"><label>Líder GA + Tel</label><input type="text" id="elg" placeholder="Ex: Pr. Wagner: 92952445474"></div>
+          <div class="f"><label>Um com Deus</label><div class="sel-wrap"><select id="eucd">
+            <option value="">Selecione</option><option value="S">Sim</option><option value="N">Não</option>
+          </select></div></div>
+          <div class="f"><label>Batizado</label><div class="sel-wrap"><select id="ebat">
+            <option value="">Selecione</option><option value="S">Sim</option><option value="N">Não</option>
+          </select></div></div>
+          <div class="f"><label>Grupo GA</label><div class="sel-wrap"><select id="egrp">
+            <option value="">Selecione</option><option>CASADOS</option>
+            <option>ADULTOS SOLTEIROS (acima de 40 anos)</option><option>MIX (30 a 40 anos)</option>
+            <option>J1 (15 a 20 anos)</option><option>J2 (18 a 20 anos)</option>
+            <option>J2 (15 a 17 anos)</option><option>J3 (21 a 25 anos)</option>
+            <option>NÃO FREQUENTO GA</option>
+          </select></div></div>
+          <div class="f"><label>Culto</label><div class="sel-wrap"><select id="eclt">
+            <option value="">Selecione</option><option>1º Culto: 08:00 h</option>
+            <option>2º Culto: 10:30 h</option><option>3° Culto: 16:00 h</option><option>4º Culto: 18:30 h</option>
+          </select></div></div>
+          <div class="f"><label>SENIB</label><div class="sel-wrap"><select id="esnb">
+            <option value="">Selecione</option><option>1° SENIB: 08:00 h</option>
+            <option>2° SENIB: 10:30 h</option><option>3° SENIB: 16:00 h</option><option>4° SENIB: 18:30 h</option>
+          </select></div></div>
+          <div class="f"><label>Faz Integração</label><div class="sel-wrap"><select id="efi">
+            <option value="">Selecione</option><option value="S">Sim</option><option value="N">Não</option>
+          </select></div></div>
+          <div class="f"><label>Situação</label><div class="sel-wrap"><select id="esit">
+            <option value="Ativo">Ativo</option><option value="Inativo">Inativo</option>
+          </select></div></div>
+          <div class="f"><label>Perfil</label><div class="sel-wrap"><select id="epf">
+            <option value="MEMBRO">MEMBRO</option><option value="LIDER">LIDER</option>
+          </select></div></div>
+          <div class="f"><label>Observações</label><textarea id="eobs" rows="3"></textarea></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-o" onclick="showEdit(1,false)">Cancelar</button>
+          <button class="btn btn-p" onclick="salvarMin()">💾 Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANE EQUIPES -->
+    <div class="pane" id="p2">
+      <p style="font-size:13px;color:var(--g5);margin-bottom:14px">Toque para marcar/desmarcar:</p>
+      <div class="eq-list" id="eq-list"></div>
+      <button class="btn btn-p" onclick="salvarEq()" style="margin-top:16px">💾 Salvar Equipes</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVO MEMBRO -->
+<div class="shov" id="sh-novo">
+  <div class="sh">
+    <div class="sh-bar"></div>
+    <div class="sh-title">Novo Membro</div>
+    <div class="sh-body">
+      <div class="f"><label>Matrícula / PIN *</label><input type="tel" id="nn-pin" inputmode="numeric"></div>
+      <div class="f"><label>Nome Completo *</label><input type="text" id="nn-nc" autocomplete="off"></div>
+      <div class="f"><label>Nome Social *</label><input type="text" id="nn-ns" autocomplete="off"></div>
+      <div class="f"><label>Sexo</label><div class="sel-wrap"><select id="nn-sx">
+        <option value="">Selecione</option><option value="M">Masculino</option><option value="F">Feminino</option>
+      </select></div></div>
+      <div class="f"><label>Telefone</label><input type="tel" id="nn-tel" inputmode="numeric"></div>
+      <div class="f"><label>E-mail</label><input type="email" id="nn-em"></div>
+      <div class="f"><label>Perfil</label><div class="sel-wrap"><select id="nn-pf">
+        <option value="Membro">Membro</option><option value="Líder">Líder</option>
+      </select></div></div>
+      <div class="btn-row" style="margin-top:4px">
+        <button class="btn btn-o" onclick="closeNovo()">Cancelar</button>
+        <button class="btn btn-p" onclick="salvarNovo()">💾 Cadastrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RESUMO LISTA -->
+<div class="sc" id="sc-resumo">
+  <div class="hdr">
+    <button class="hdr-back" onclick="ir('home')">←</button>
+    <div class="hdr-title">Resumo de Visitas</div>
+    <div style="width:40px"></div>
+  </div>
+  <div class="pg">
+    <div id="res-lista"><div class="empty"><div class="ei">📊</div><p>Carregando...</p></div></div>
+  </div>
+  <button class="fab" onclick="abrirNovoResumo()">+</button>
+  <nav class="nav">
+    <button class="nb" onclick="ir('home',0,this)"><span class="ni">🏠</span>Início</button>
+    <button class="nb" onclick="ir('decisoes',1,this)"><span class="ni">✝</span>Decisões</button>
+    <button class="nb" onclick="ir('integracao',2,this)"><span class="ni">🔗</span>Integração</button>
+    <button class="nb" onclick="ir('aniversarios',3,this)"><span class="ni">🎂</span>Aniversários</button>
+  </nav>
+</div>
+
+<!-- RESUMO CARD DETALHE -->
+<div class="sc" id="sc-resumo-det">
+  <div class="hdr">
+    <button class="hdr-back" onclick="ir('resumo')">←</button>
+    <div class="hdr-title">Detalhes</div>
+    <div style="width:40px"></div>
+  </div>
+  <div class="pg no-nav" style="padding-bottom:40px">
+    <!-- CARD VISUAL para print/compartilhar -->
+    <div id="res-card" style="background:var(--navy);border-radius:20px;overflow:hidden;margin-bottom:16px">
+      <!-- Foto -->
+      <div id="res-card-foto" style="width:100%;height:220px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;overflow:hidden">
+        <span style="font-size:48px">📷</span>
+      </div>
+      <!-- Dados -->
+      <div style="padding:20px">
+        <div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Hospital</div>
+        <div id="rc-equipe" style="font-family:'DM Serif Display',serif;font-size:22px;color:#fff;margin-bottom:16px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center">
+            <div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Data da Visita</div>
+            <div id="rc-data" style="font-size:18px;font-weight:700;color:#fff"></div>
+          </div>
+          <div style="background:rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center">
+            <div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Líder</div>
+            <div id="rc-lider" style="font-size:14px;font-weight:600;color:#fff"></div>
+          </div>
+          <div style="background:var(--gold);border-radius:12px;padding:14px;text-align:center">
+            <div style="font-size:11px;color:rgba(0,0,0,.6);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Decisões</div>
+            <div id="rc-total" style="font-size:28px;font-weight:700;color:var(--navy)"></div>
+          </div>
+          <div style="background:rgba(255,255,255,.15);border-radius:12px;padding:14px;text-align:center">
+            <div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Saldo</div>
+            <div id="rc-saldo" style="font-size:28px;font-weight:700;color:#fff"></div>
+          </div>
+        </div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);font-size:12px;color:rgba(255,255,255,.4);text-align:center">
+          ✝ Ministério Nova Capelania — Nova Igreja Batista
+        </div>
+      </div>
+    </div>
+    <button class="btn" onclick="compartilharResumo()" style="background:#25d366;color:#fff;margin-bottom:10px">
+      📤 Compartilhar via WhatsApp
+    </button>
+  </div>
+</div>
+
+<!-- SHEET NOVO RESUMO -->
+<div class="shov" id="sh-resumo">
+  <div class="sh">
+    <div class="sh-bar"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px 14px">
+      <div class="sh-title" style="padding:0">📊 Novo Resumo</div>
+      <button onclick="$('sh-resumo').classList.remove('on')" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--g2);color:var(--g6);font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div class="sh-body">
+      <div class="f">
+        <label>Equipe / Hospital</label>
+        <div id="res-eq-display" style="background:var(--g1);border:1.5px solid var(--g2);border-radius:var(--r);padding:14px 16px;font-size:15px;color:var(--navy);font-weight:600"></div>
+        <input type="hidden" id="res-eq">
+      </div>
+      <div class="f">
+        <label>Data da Visita *</label>
+        <input type="text" id="res-data" placeholder="dd/mm/aaaa" maxlength="10">
+      </div>
+      <div class="f">
+        <label>Total de Decisões *</label>
+        <input type="tel" id="res-total" inputmode="numeric" placeholder="Ex: 102">
+      </div>
+      <div class="f">
+        <label>Foto da Visita</label>
+        <input type="file" id="res-foto-input" accept="image/*" style="display:none" onchange="onResFotoChange(event)">
+        <label for="res-foto-input" style="display:flex;align-items:center;justify-content:center;gap:10px;height:52px;border:1.5px dashed var(--g3);border-radius:var(--r);background:var(--g1);color:var(--g5);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;width:100%">
+          📷 Tirar / Escolher Foto
+        </label>
+        <div id="res-foto-preview" style="margin-top:10px;display:none">
+          <img id="res-foto-img" style="width:100%;border-radius:12px;max-height:180px;object-fit:cover">
+          <div style="font-size:12px;color:var(--g4);margin-top:6px;text-align:center" id="res-foto-status">📷 Foto selecionada</div>
+        </div>
+      </div>
+      <button class="btn btn-p" onclick="salvarResumo()">💾 Salvar Resumo</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHEET MUDAR SENHA -->
+<div class="shov" id="sh-senha">
+  <div class="sh">
+    <div class="sh-bar"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px 14px">
+      <div class="sh-title" style="padding:0">🔑 Mudar Senha</div>
+      <button onclick="$('sh-senha').classList.remove('on')" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--g2);color:var(--g6);font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div class="sh-body">
+      <div style="background:var(--g1);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--g5)">
+        🔒 Sua senha atual é sua matrícula se nunca foi alterada.
+      </div>
+      <div class="f"><label>Senha Atual *</label><input type="password" id="s-atual" placeholder="Digite a senha atual"></div>
+      <div class="f"><label>Nova Senha *</label><input type="password" id="s-nova" placeholder="Mínimo 4 caracteres"></div>
+      <div class="f"><label>Confirmar Nova Senha *</label><input type="password" id="s-conf" placeholder="Repita a nova senha"></div>
+      <button class="btn btn-p" onclick="confirmarMudarSenha()" style="margin-top:4px">💾 Salvar Nova Senha</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- RELATÓRIOS -->
+<div class="sc" id="sc-relatorios">
+  <div class="hdr">
+    <button class="hdr-back" onclick="ir('home')">←</button>
+    <div class="hdr-title">Relatórios</div>
+    <div style="width:40px"></div>
+  </div>
+  <div class="pg no-nav" style="padding-bottom:20px">
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="rel-tab-semana" class="rel-tab-btn rel-tab-on" onclick="relAba('semana',this)">🚨 Esta semana</button>
+      <button id="rel-tab-historico" class="rel-tab-btn" onclick="relAba('historico',this)">📈 Histórico</button>
+      <button id="rel-tab-presenca" class="rel-tab-btn" onclick="relAba('presenca',this)">📋 Presença</button>
+      <button id="rel-tab-anual" class="rel-tab-btn" onclick="relAba('anual',this)">📅 Anual</button>
+    </div>
+    <div id="rel-conteudo">
+      <div class="empty"><div class="ei">📊</div><p>Selecione uma aba.</p></div>
+    </div>
+    <!-- Botão atualizar Rel_Presença — só aparece na aba presença, só para Líder -->
+    <div id="btn-atualizar-presenca-wrap" style="display:none;margin-top:12px">
+      <button onclick="atualizarRelPresenca()" class="btn btn-o" style="font-size:14px">
+        🔄 Atualizar lista de equipes e membros
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- EQUIPES GESTÃO -->
+<div class="sc" id="sc-equipes">
+  <div class="hdr">
+    <button class="hdr-back" onclick="ir('home')">←</button>
+    <div class="hdr-title">Equipes</div>
+    <div style="width:40px"></div>
+  </div>
+  <div class="pg no-nav" style="padding-bottom:80px">
+    <div id="eq-mgr-lista">
+      <div class="empty"><div class="ei">⚙️</div><p>Carregando...</p></div>
+    </div>
+  </div>
+  <button class="fab" onclick="abrirNovaEquipe()">+</button>
+</div>
+
+<!-- MODAL NOVA / EDITAR EQUIPE -->
+<div class="shov" id="sh-eq-form">
+  <div class="sh" style="padding-bottom:40px">
+    <div class="sh-bar"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px 14px">
+      <div class="sh-title" id="eq-form-titulo" style="padding:0;font-family:'DM Serif Display',serif;font-size:20px;color:var(--navy)">Nova Equipe</div>
+      <button onclick="$('sh-eq-form').classList.remove('on')" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--g2);color:var(--g6);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+    </div>
+    <div class="sh-body">
+      <div class="f">
+        <label>Nome da Equipe *</label>
+        <input type="text" id="eq-f-nome" placeholder="Ex: HPS 28 de Agosto – Sáb 15h às 16h" autocomplete="off">
+      </div>
+      <div class="f">
+        <label>Hospital</label>
+        <input type="text" id="eq-f-hosp" placeholder="Ex: HPS 28 de Agosto" autocomplete="off">
+      </div>
+      <div class="f">
+        <label>Dia / Horário</label>
+        <input type="text" id="eq-f-dia" placeholder="Ex: Sábado 15h às 16h" autocomplete="off">
+      </div>
+      <div class="f">
+        <label>Matrícula do Líder</label>
+        <input type="text" id="eq-f-lider" placeholder="Ex: 12345" inputmode="numeric" autocomplete="off">
+      </div>
+      <div style="margin-top:8px">
+        <button class="btn btn-p" onclick="salvarEquipeForm()">💾 Salvar Equipe</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="supabase-client.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
