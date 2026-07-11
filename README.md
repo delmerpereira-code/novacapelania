@@ -446,14 +446,17 @@ telefone inválido, mesmo critério do sistema antigo), espalhadas entre
    (`0006_agendamento_distribuicao.sql`): roda toda segunda 03:50 UTC
    (domingo 23:50 em America/Manaus, UTC-4 sem horário de verão —
    **ajustar o cron expression se a operação não for mais em Manaus/AM**).
-   O botão manual 🔀 continua funcionando pra liderança disparar antes da
-   hora se precisar. A checagem de liderança dentro da function só se
-   aplica quando a chamada vem com um JWT (via API) que não é de
-   liderança — chamada sem JWT nenhum (só possível internamente, cron ou
-   SQL direto) é permitida, já que só quem tem acesso ao banco consegue
-   chamar assim. Testado: liderança consegue disparar manualmente, membro
-   comum continua bloqueado, cron registrado e ativo (`select * from
-   cron.job`).
+   O botão manual 🔀 continua existindo, mas (`0007_restringir_distribuicao_manual.sql`,
+   pedido do usuário) só aparece e funciona pra uma matrícula específica
+   (`auth_e_administrador()`, hoje só `17027`) — nem outros perfis Líder
+   conseguem mais disparar manualmente, só essa matrícula ou o próprio
+   cron. Pra adicionar mais gente autorizada, editar a comparação em
+   `auth_e_administrador()`. A checagem só se aplica quando a chamada vem
+   com um JWT (via API); chamada sem JWT nenhum (só possível
+   internamente, cron ou SQL direto) é permitida, já que só quem tem
+   acesso ao banco consegue chamar assim. Testado: matrícula autorizada
+   consegue disparar, matrícula Líder não-autorizada é bloqueada, cron
+   registrado e ativo (`select * from cron.job`).
 3. Decidir se o app vai continuar como está (matrícula/senha + JWT
    próprio) ou se compensa migrar pra Supabase Auth nativo no futuro —
    não é urgente, mas é uma dívida arquitetural conhecida.

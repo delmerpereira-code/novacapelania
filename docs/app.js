@@ -1416,8 +1416,11 @@ async function distribuirIntegracoesPendentes() {
 }
 
 async function loadIntegracao() {
+  // Disparo manual restrito a uma única matrícula (pedido do usuário) --
+  // o agendamento automático de domingo (pg_cron) continua valendo pra
+  // todo mundo, isso só controla quem pode acionar fora da hora.
   const btnDist = $('btn-distribuir-integ');
-  if(btnDist) btnDist.style.display = S.user?.perfil==='Líder' ? 'flex' : 'none';
+  if(btnDist) btnDist.style.display = S.user?.matricula==='17027' ? 'flex' : 'none';
   const sw = getSemana();
   // Semana anterior
   const swAnt = new Date(sw.ini);
