@@ -188,7 +188,27 @@ async function supaLerDecisoesSemana(semana) {
 // (telefone_normalizado + semana) rejeita a gravação -- é a defesa real
 // contra a condição de corrida do sistema antigo; a checagem no cliente é
 // só uma otimização de UX pra não esperar o round-trip.
-async function supaGravarDecisao({ capelaoId, equipeId, dataVisita, assistido, nome, sexo, tel, integ, motivo, obs }) {
+//
+// Decisão que NÃO quer integração nasce já "fechada" -- não tem pendência
+// nenhuma, então nem passa por `decisoes`: vai direto pra
+// `decisoes_arquivo` (só contador, sem nome/telefone). Só quem quer
+// integração fica detalhada em `decisoes`, até alguém confirmar (ver
+// supaRegistrarIntegracao).
+async function supaGravarDecisao({ capelaoId, equipeId, dataVisita, semana, assistido, nome, sexo, tel, integ, motivo, obs }) {
+  if (!integ) {
+    const [ano, mes] = dataVisita.split('-').map(Number);
+    const { error } = await supabaseClient.from('decisoes_arquivo').insert({
+      semana, ano, mes,
+      equipe_id: equipeId,
+      sexo,
+      quer_integracao: false,
+      motivo_nao_integracao: motivo || null,
+      integrado: false,
+    });
+    if (error) throw error;
+    return;
+  }
+
   const { error } = await supabaseClient.from('decisoes').insert({
     capelao_id: capelaoId,
     equipe_id: equipeId,
@@ -196,10 +216,9 @@ async function supaGravarDecisao({ capelaoId, equipeId, dataVisita, assistido, n
     tipo_assistido: assistido,
     nome_assistido: nome,
     sexo,
-    telefone: integ ? tel : '',
-    quer_integracao: integ,
-    motivo_nao_integracao: integ ? null : motivo,
-    observacoes: integ ? obs : null,
+    telefone: tel,
+    quer_integracao: true,
+    observacoes: obs,
   });
   if (error) {
     if (error.code === '23505') {
@@ -288,17 +307,12 @@ async function supaLerIntegracao() {
   return data.map(adaptarIntegracao);
 }
 
-async function supaRegistrarIntegracao(integracaoId, decisaoId, capelaoId) {
-  const { error: errUpdate } = await supabaseClient
-    .from('integracoes')
-    .update({ integrado: true, updated_at: new Date().toISOString() })
-    .eq('id', integracaoId);
-  if (errUpdate) throw errUpdate;
-
-  const { error: errLog } = await supabaseClient
-    .from('resultado_integracao')
-    .insert({ decisao_id: decisaoId, capelao_id: capelaoId });
-  if (errLog) throw errLog;
+// "Fecha" a integração: a function no banco (SECURITY DEFINER) grava o
+// contador em decisoes_arquivo e apaga a decisão detalhada original numa
+// operação só (ver arquivar_integracao() em 0005_arquivamento_decisoes.sql).
+async function supaRegistrarIntegracao(integracaoId) {
+  const { error } = await supabaseClient.rpc('arquivar_integracao', { p_integracao_id: integracaoId });
+  if (error) throw error;
 }
 
 // Dispara o round-robin de distribuição (só liderança, ver RLS/função no
@@ -406,10 +420,14 @@ async function supaGravarResumo({ equipeId, dataVisitaISO, liderId, total, fotoU
 // retornavam erro) -- essas são implementadas do zero aqui, direto sobre
 // as tabelas já existentes (sem tabela de agregação própria).
 // ---------------------------------------------------------------------------
+// Lê de v_decisoes_stats (decisões ainda pendentes + já arquivadas), não
+// direto de `decisoes` -- uma decisão integrada e arquivada nesta mesma
+// semana ainda precisa contar no total, mesmo já tendo sido apagada da
+// tabela detalhada.
 async function supaRelatorioSemana(semana) {
   const { data, error } = await supabaseClient
-    .from('decisoes')
-    .select('sexo, quer_integracao, motivo_nao_integracao, integracoes(integrado)')
+    .from('v_decisoes_stats')
+    .select('sexo, quer_integracao, motivo_nao_integracao, integrado')
     .eq('semana', semana);
   if (error) throw error;
 
@@ -418,7 +436,7 @@ async function supaRelatorioSemana(semana) {
   const semIntegracao = data.filter((d) => !d.quer_integracao);
   const totalS = comIntegracao.length;
   const totalN = semIntegracao.length;
-  const integ = comIntegracao.filter((d) => d.integracoes && d.integracoes.integrado).length;
+  const integ = comIntegracao.filter((d) => d.integrado).length;
   const pend = totalS - integ;
   const pctInteg = totalS ? Math.round((integ / totalS) * 100) : 0;
 
@@ -449,26 +467,35 @@ async function supaRelatorioSemana(semana) {
 // quantas decisões foram atribuídas, quantas ele já integrou, saldo
 // pendente por semana. Substitui a leitura de "Historico_Integracao", que
 // no sistema antigo era só leitura -- nunca populada por nenhuma ação do
-// app (fonte de dado externa/manual não portada). Aqui é calculado ao
-// vivo em cima de `integracoes`/`decisoes`, sem tabela de agregação.
+// app (fonte de dado externa/manual não portada). Lê de v_decisoes_stats
+// (pendentes + arquivadas) -- uma vez arquivada, a decisão continua
+// contando pro integrador que a fechou, mesmo sem mais existir em
+// `decisoes`.
 async function supaRelatorioHistorico(semanaAtual) {
   const semanas = [];
   for (let i = 7; i >= 0; i--) semanas.push(semanaAtual - i);
 
-  // Filtro de semana aplicado em JS (abaixo), não na query -- filtrar por
-  // coluna de um recurso aninhado no PostgREST exigiria !inner e sintaxe
-  // própria; o volume de linhas aqui é pequeno o suficiente pra não valer
-  // a complexidade.
   const { data, error } = await supabaseClient
-    .from('integracoes')
-    .select('integrado, integrador:membros!integrador_id(nome_completo, nome_social), decisao:decisoes!decisao_id(semana)');
+    .from('v_decisoes_stats')
+    .select('semana, integrado, integrador_id')
+    .not('integrador_id', 'is', null)
+    .gte('semana', semanas[0])
+    .lte('semana', semanas[semanas.length - 1]);
   if (error) throw error;
+
+  const integradorIds = [...new Set(data.map((r) => r.integrador_id))];
+  const { data: membrosData, error: errMembros } = await supabaseClient
+    .from('membros')
+    .select('id, nome_completo, nome_social')
+    .in('id', integradorIds.length ? integradorIds : ['00000000-0000-0000-0000-000000000000']);
+  if (errMembros) throw errMembros;
+  const nomePorId = Object.fromEntries(membrosData.map((m) => [m.id, nomeMembro(m) || m.nome_completo]));
 
   const porIntegrador = {};
   data.forEach((row) => {
-    const sem = row.decisao && row.decisao.semana;
-    if (sem == null || !semanas.includes(sem)) return;
-    const nome = nomeMembro(row.integrador) || 'Sem integrador';
+    const sem = row.semana;
+    if (!semanas.includes(sem)) return;
+    const nome = nomePorId[row.integrador_id] || 'Sem integrador';
     porIntegrador[nome] ||= {};
     porIntegrador[nome][sem] ||= { semana: sem, total: 0, integradas: 0 };
     porIntegrador[nome][sem].total += 1;
@@ -563,24 +590,23 @@ async function supaRelatorioPresenca(semanaAtual) {
   };
 }
 
-// Comparativo de decisões por mês, ano atual vs. anterior. Como
-// `lerRelatorioAnual` nunca foi implementada no backend antigo, é
-// calculada aqui em cima de `decisoes.data_visita`, sem tabela própria.
+// Comparativo de decisões por mês, ano atual vs. anterior. Lê de
+// v_decisoes_stats (não só `decisoes`) pra continuar contando as que já
+// foram arquivadas.
 async function supaRelatorioAnual() {
   const anoAtual = new Date().getFullYear();
   const anos = [anoAtual - 1, anoAtual];
 
   const { data, error } = await supabaseClient
-    .from('decisoes')
-    .select('data_visita')
-    .gte('data_visita', `${anos[0]}-01-01`)
-    .lte('data_visita', `${anos[anos.length - 1]}-12-31`);
+    .from('v_decisoes_stats')
+    .select('ano, mes')
+    .gte('ano', anos[0])
+    .lte('ano', anos[anos.length - 1]);
   if (error) throw error;
 
   const contagem = {};
   data.forEach((d) => {
-    const [y, m] = d.data_visita.split('-');
-    const key = `${y}-${parseInt(m, 10)}`;
+    const key = `${d.ano}-${d.mes}`;
     contagem[key] = (contagem[key] || 0) + 1;
   });
 

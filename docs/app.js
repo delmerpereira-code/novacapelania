@@ -738,6 +738,7 @@ async function salvarDec() {
       capelaoId: S.user.codigo,
       equipeId: S.equipeId,
       dataVisita: toISODate(S.dv||h),
+      semana: numSemana(S.dv||h),
       assistido: S.dec.assistido,
       nome: nm,
       sexo: S.dec.sexo==='Masculino'?'M':'F',
@@ -1737,7 +1738,7 @@ async function registrarIntegracao() {
   if(btnDiv) btnDiv.textContent = 'Registrando...';
   load('Registrando integração...');
   try {
-    await supaRegistrarIntegracao(d.id, d.idDecisao, S.user.codigo);
+    await supaRegistrarIntegracao(d.id);
     unload();
     // Atualizar localmente
     d.integrado = 'Sim';

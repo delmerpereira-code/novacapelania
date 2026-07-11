@@ -346,6 +346,59 @@ Todo o inventário do README original — as ações "funcionando hoje" e as
 "quebradas" — foi portado e testado num navegador de verdade. Não há mais
 nenhuma tela chamando o `SCRIPT` (Apps Script) antigo.
 
+## Deploy
+
+Frontend publicado via GitHub Pages a partir de `docs/` (GitHub Pages só
+serve a raiz do repo ou uma pasta `/docs`, por isso o frontend não ficou em
+`frontend/`). `npm run dev` continua servindo `docs/` localmente pra testes
+(`localhost:8123`).
+
+## Modelo de arquivamento de decisões (mudança de arquitetura pedida em
+2026-07-11)
+
+Decisão do usuário: não manter decisão por decisão pra sempre — só
+enquanto ela ainda está "aberta" (aguardando integração). Isso muda o
+ciclo de vida de `decisoes`:
+
+- **Quer integração**: nasce em `decisoes` (com nome/telefone, tudo
+  detalhado) e fica lá até alguém confirmar a integração — só nesse
+  período ela é editável/excluível e aparece nas telas de Decisões e
+  Integração.
+- **Não quer integração**: nasce **já arquivada** — nunca chega a virar
+  linha em `decisoes` nem aparece como pendência em lugar nenhum. Vai
+  direto pra `decisoes_arquivo`.
+- **Ao confirmar integração**: a function `arquivar_integracao(p_integracao_id)`
+  (SECURITY DEFINER, `0005_arquivamento_decisoes.sql`) grava um contador
+  em `decisoes_arquivo` (semana, ano, mês, equipe, sexo, quem integrou —
+  **sem** nome/telefone/observações) e apaga a decisão original numa
+  operação só (o `delete` em cascata também limpa a linha correspondente
+  em `integracoes`).
+- **`resultado_integracao`** (log de quem confirmou cada integração) foi
+  **removida** — deixou de fazer sentido nesse modelo, já que o próprio
+  arquivamento guarda o integrador responsável pra fins de contagem, sem
+  precisar de um log individual.
+- **`v_decisoes_stats`**: view que junta `decisoes` (ainda pendentes) +
+  `decisoes_arquivo` (já fechadas) numa única forma, pra que os
+  relatórios (Semana/Histórico/Anual) não precisem saber se o dado ainda
+  está detalhado ou já virou só contador. `supaRelatorioSemana`,
+  `supaRelatorioHistorico` e `supaRelatorioAnual` foram reescritos pra
+  consultar essa view em vez de `decisoes` direto.
+
+**Efeito colateral conhecido e aceito**: a constraint de telefone
+duplicado (`decisoes_telefone_semana_uniq`) só protege enquanto a decisão
+está detalhada. Depois que uma decisão é arquivada (integrada), um novo
+registro com o mesmo telefone na mesma semana não é mais bloqueado como
+duplicata, porque não sobra nenhum dado pra comparar. Foi uma troca
+consciente — o objetivo original da constraint (evitar duplo lançamento
+da mesma visita, tipicamente resolvido antes da integração acontecer)
+continua coberto na prática.
+
+Testado com `node scripts/browser-test-arquivamento.mjs`: decisão não
+integrável nunca aparece como pendência; decisão integrável some da lista
+de pendências e da fila de Integração assim que confirmada; totais dos
+relatórios continuam corretos somando pendente + arquivado; confirmado
+direto no banco que o registro arquivado não tem nome/telefone/obs.
+
 ## Próximos passos (não bloqueiam uso, mas valem revisão)
 
 1. Resolver os 4 vínculos membro-equipe pendentes da importação original
