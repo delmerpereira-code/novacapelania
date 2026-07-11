@@ -399,6 +399,31 @@ de pendências e da fila de Integração assim que confirmada; totais dos
 relatórios continuam corretos somando pendente + arquivado; confirmado
 direto no banco que o registro arquivado não tem nome/telefone/obs.
 
+## Import de decisões históricas (semanas 26-28, dado real de produção)
+
+`scripts/import-decisoes.mjs` — importa `data/decisoes.csv` +
+`data/integracao.csv` (export da planilha antiga) já respeitando o modelo
+de arquivamento: decisão não integrável ou já integrada na planilha
+antiga vai direto pra `decisoes_arquivo`; só decisão que quer integração
+e ainda está pendente na planilha antiga vira registro vivo em
+`decisoes` (+ `integracoes`). Rodar com
+`SEMANAS_ALVO=26,27,28 node scripts/import-decisoes.mjs` (variável de
+ambiente opcional, default `26,27,28`).
+
+Resultado do import feito em 2026-07-11: 2.279 linhas processadas → 696
+pendentes vivas (fila de Integração real) + 1.569 arquivadas. Testado com
+`node scripts/browser-test-dados-reais.mjs` — Decisões, Integração e
+Relatórios renderizam corretamente com esse volume, sem erro de console,
+query de Integração em ~560ms mesmo com ~700 linhas e vários joins.
+
+**Ponto de atenção conhecido**: ~51% das decisões já integradas na
+planilha antiga (582 de 1138) não conseguiram resolver o nome do
+integrador (`Integrador` do CSV → `membros.nome_completo`/`nome_social`,
+provavelmente diferença de grafia/acentuação) — contam certo nos totais,
+mas não aparecem atribuídas a uma pessoa específica no relatório de
+Histórico. Não bloqueia o uso, mas vale revisar se o relatório de
+Histórico precisar refletir o passado com mais precisão.
+
 ## Próximos passos (não bloqueiam uso, mas valem revisão)
 
 1. Resolver os 4 vínculos membro-equipe pendentes da importação original
