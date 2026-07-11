@@ -8,7 +8,7 @@
     "import:equipes": "node scripts/import-equipes.mjs",
     "import:vinculos": "node scripts/link-membro-equipe.mjs",
     "import:all": "npm run import:cadastro && npm run import:equipes && npm run import:vinculos",
-    "dev": "node scripts/static-server.mjs frontend 8123",
+    "dev": "node scripts/static-server.mjs docs 8123",
     "test:login": "node scripts/test-login.mjs",
     "test:browser": "node scripts/browser-test.mjs",
     "migrate": "node scripts/apply-migration.mjs"
