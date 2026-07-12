@@ -25,12 +25,24 @@ const normalizaPerfil = (v) => {
   return t || 'Membro';
 };
 
+// A planilha antiga usa D/M (dia/mês, padrão brasileiro) na maioria das
+// linhas, mas um punhado foi digitado M/D por engano -- só detectável
+// porque o "mês" em D/M dessas linhas seria inválido (>12). Nesses casos
+// mantemos a leitura M/D em vez de gerar um mês impossível.
 const parseAniversario = (v) => {
   const t = (v || '').trim();
   const m = t.match(/^(\d{1,2})\/(\d{1,2})$/);
   if (!m) return { mes: null, dia: null };
-  const mes = parseInt(m[1], 10);
-  const dia = parseInt(m[2], 10);
+  const primeiro = parseInt(m[1], 10);
+  const segundo = parseInt(m[2], 10);
+  let mes, dia;
+  if (segundo >= 1 && segundo <= 12) {
+    dia = primeiro;
+    mes = segundo;
+  } else {
+    mes = primeiro;
+    dia = segundo;
+  }
   if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return { mes: null, dia: null };
   return { mes, dia };
 };

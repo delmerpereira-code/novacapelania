@@ -320,6 +320,17 @@ do `app.js`). Pontos relevantes descobertos nessa leitura:
 - ✅ **Aniversários portado e testado** — mapeia direto pra view
   `v_aniversarios` (já existia desde `0001_init.sql`), sem precisar de
   nenhuma função nova.
+- 🐛 **Bug real encontrado e corrigido em 2026-07-12** (usuário reportou
+  o próprio aniversário aparecendo errado): `import-cadastro.mjs`
+  interpretava a coluna `aniversario` da planilha como M/D (mês/dia),
+  mas a planilha usa D/M (dia/mês, padrão brasileiro) na maioria das
+  linhas — dia e mês ficaram trocados pra **149 dos 164 membros** com
+  aniversário cadastrado. 15 linhas tinham o "mês" resultante em D/M
+  inválido (>12, ex: "10/27") — só possível de ler como M/D mesmo,
+  mantidas como estavam. Corrigido nos dados
+  (`node scripts/corrigir-aniversarios.mjs`, reprocessa o CSV original
+  com a regra certa) e no script de import, pra não reproduzir numa
+  próxima importação.
 - ✅ **Fotos portado e testado** (`node scripts/browser-test-foto.mjs`,
   upload real confirmado no banco). O upload em si (Cloudinary, direto do
   navegador) já funcionava mesmo no sistema antigo e não mudou — o que
