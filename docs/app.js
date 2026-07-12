@@ -738,7 +738,6 @@ async function salvarDec() {
       capelaoId: S.user.codigo,
       equipeId: S.equipeId,
       dataVisita: toISODate(S.dv||h),
-      semana: numSemana(S.dv||h),
       assistido: S.dec.assistido,
       nome: nm,
       sexo: S.dec.sexo==='Masculino'?'M':'F',

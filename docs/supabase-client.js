@@ -189,26 +189,14 @@ async function supaLerDecisoesSemana(semana) {
 // contra a condição de corrida do sistema antigo; a checagem no cliente é
 // só uma otimização de UX pra não esperar o round-trip.
 //
-// Decisão que NÃO quer integração nasce já "fechada" -- não tem pendência
-// nenhuma, então nem passa por `decisoes`: vai direto pra
-// `decisoes_arquivo` (só contador, sem nome/telefone). Só quem quer
-// integração fica detalhada em `decisoes`, até alguém confirmar (ver
-// supaRegistrarIntegracao).
-async function supaGravarDecisao({ capelaoId, equipeId, dataVisita, semana, assistido, nome, sexo, tel, integ, motivo, obs }) {
-  if (!integ) {
-    const [ano, mes] = dataVisita.split('-').map(Number);
-    const { error } = await supabaseClient.from('decisoes_arquivo').insert({
-      semana, ano, mes,
-      equipe_id: equipeId,
-      sexo,
-      quer_integracao: false,
-      motivo_nao_integracao: motivo || null,
-      integrado: false,
-    });
-    if (error) throw error;
-    return;
-  }
-
+// Toda decisão (integrável ou não) fica guardada e editável em `decisoes`
+// durante a semana em que foi registrada -- pode ter sido um erro de
+// digitação e precisar de ajuste. Só na virada de semana (função
+// arquivar_semana_fechada(), rodada pelo cron de domingo) é que ela vira
+// só contador: integrável confirmada e não-integrável são arquivadas
+// juntas; quem ainda não foi integrado continua vivo, pra cobrança
+// continuar na semana seguinte.
+async function supaGravarDecisao({ capelaoId, equipeId, dataVisita, assistido, nome, sexo, tel, integ, motivo, obs }) {
   const { error } = await supabaseClient.from('decisoes').insert({
     capelao_id: capelaoId,
     equipe_id: equipeId,
@@ -216,9 +204,10 @@ async function supaGravarDecisao({ capelaoId, equipeId, dataVisita, semana, assi
     tipo_assistido: assistido,
     nome_assistido: nome,
     sexo,
-    telefone: tel,
-    quer_integracao: true,
-    observacoes: obs,
+    telefone: integ ? tel : '',
+    quer_integracao: integ,
+    motivo_nao_integracao: integ ? null : motivo,
+    observacoes: integ ? obs : null,
   });
   if (error) {
     if (error.code === '23505') {
@@ -310,8 +299,14 @@ async function supaLerIntegracao() {
 // "Fecha" a integração: a function no banco (SECURITY DEFINER) grava o
 // contador em decisoes_arquivo e apaga a decisão detalhada original numa
 // operação só (ver arquivar_integracao() em 0005_arquivamento_decisoes.sql).
+// Só marca como integrado -- não arquiva nem apaga na hora. O card fica
+// verde e continua na lista até a virada de semana (arquivar_semana_fechada()
+// no cron de domingo), pra dar tempo de conferir/desfazer se precisar.
 async function supaRegistrarIntegracao(integracaoId) {
-  const { error } = await supabaseClient.rpc('arquivar_integracao', { p_integracao_id: integracaoId });
+  const { error } = await supabaseClient
+    .from('integracoes')
+    .update({ integrado: true, updated_at: new Date().toISOString() })
+    .eq('id', integracaoId);
   if (error) throw error;
 }
 

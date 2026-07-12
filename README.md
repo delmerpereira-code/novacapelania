@@ -353,51 +353,66 @@ serve a raiz do repo ou uma pasta `/docs`, por isso o frontend não ficou em
 `frontend/`). `npm run dev` continua servindo `docs/` localmente pra testes
 (`localhost:8123`).
 
-## Modelo de arquivamento de decisões (mudança de arquitetura pedida em
+## Modelo de arquivamento de decisões (v2, 2026-07-12 — corrige o v1 de
 2026-07-11)
 
-Decisão do usuário: não manter decisão por decisão pra sempre — só
-enquanto ela ainda está "aberta" (aguardando integração). Isso muda o
-ciclo de vida de `decisoes`:
+Ciclo de vida real, explicado pelo usuário depois de testar o v1 (que
+arquivava a não-integrável na hora e apagava a integrável assim que
+confirmada — errado nos dois casos, ver correção abaixo):
 
-- **Quer integração**: nasce em `decisoes` (com nome/telefone, tudo
-  detalhado) e fica lá até alguém confirmar a integração — só nesse
-  período ela é editável/excluível e aparece nas telas de Decisões e
-  Integração.
-- **Não quer integração**: nasce **já arquivada** — nunca chega a virar
-  linha em `decisoes` nem aparece como pendência em lugar nenhum. Vai
-  direto pra `decisoes_arquivo`.
-- **Ao confirmar integração**: a function `arquivar_integracao(p_integracao_id)`
-  (SECURITY DEFINER, `0005_arquivamento_decisoes.sql`) grava um contador
-  em `decisoes_arquivo` (semana, ano, mês, equipe, sexo, quem integrou —
-  **sem** nome/telefone/observações) e apaga a decisão original numa
-  operação só (o `delete` em cascata também limpa a linha correspondente
-  em `integracoes`).
-- **`resultado_integracao`** (log de quem confirmou cada integração) foi
-  **removida** — deixou de fazer sentido nesse modelo, já que o próprio
-  arquivamento guarda o integrador responsável pra fins de contagem, sem
-  precisar de um log individual.
-- **`v_decisoes_stats`**: view que junta `decisoes` (ainda pendentes) +
-  `decisoes_arquivo` (já fechadas) numa única forma, pra que os
-  relatórios (Semana/Histórico/Anual) não precisem saber se o dado ainda
-  está detalhado ou já virou só contador. `supaRelatorioSemana`,
-  `supaRelatorioHistorico` e `supaRelatorioAnual` foram reescritos pra
-  consultar essa view em vez de `decisoes` direto.
+- **A semana toda (domingo a sábado)**: toda decisão registrada —
+  integrável ou não — fica **guardada e editável** em `decisoes`. Pode
+  ter sido erro de digitação e precisar de ajuste até o fim da semana.
+  Não-integrável **não é mais arquivada na hora** de salvar (era assim no
+  v1) — vira uma decisão viva normal, só sem linha em `integracoes`.
+- **Confirmar integração só troca o status** (`integracoes.integrado =
+  true`, um `update` simples) — **não arquiva nem apaga nada na hora**
+  (era assim no v1). O card na tela vira verde (💚) e **continua
+  aparecendo na lista** até a virada de semana, dando tempo de conferir/
+  desfazer se precisar.
+- **Na virada de semana** (cron de domingo 23:50 Manaus, `0006` +
+  `0008_fechamento_semanal.sql`), roda `arquivar_semana_fechada()` (antes
+  de `distribuir_integracoes()`, mesmo job): arquiva em `decisoes_arquivo`
+  (só contador — semana, ano, mês, equipe, sexo, quem integrou, **sem**
+  nome/telefone/obs) e apaga da tabela viva duas coisas:
+  1. Integráveis já confirmadas (`integracoes.integrado = true`) — as
+     verdes.
+  2. Todas as não-integráveis (`quer_integracao = false`) — nunca tinham
+     pendência real, só precisavam da janela de correção da semana.
+  O que continua **vermelho** (integrável ainda não confirmada) **não é
+  tocado** — segue vivo, com o mesmo integrador, pra cobrança continuar.
+  A fila de Integração "da semana futura" nasce automaticamente disso: é
+  só o que sobrou vivo depois do fechamento, sem precisar de nenhuma
+  lógica extra pra "trazer" os pendentes antigos.
+- `arquivar_integracao()` (função individual do v1, chamada a cada
+  confirmação) foi **removida** — o arquivamento agora é sempre em lote,
+  na virada de semana, nunca mais individual no momento de confirmar.
+- **`resultado_integracao`** (log de quem confirmou cada integração)
+  continua removida (decisão do v1, não mudou) — o próprio arquivamento
+  em lote já guarda o integrador responsável pra fins de contagem.
+- **`v_decisoes_stats`**: sem mudança — continua juntando `decisoes`
+  (ainda vivas) + `decisoes_arquivo` (já fechadas), então os relatórios
+  não precisam saber se o dado já foi arquivado ou não.
+- **Restrição de disparo manual** (`auth_e_administrador()`,
+  `0007_restringir_distribuicao_manual.sql`, pedido separado do usuário):
+  tanto `distribuir_integracoes()` quanto `arquivar_semana_fechada()` só
+  podem ser chamadas manualmente (via API) pela matrícula `17027` — o
+  cron continua rodando pra todo mundo normalmente, sem JWT nenhum no
+  contexto (por isso não é bloqueado pela mesma checagem).
 
-**Efeito colateral conhecido e aceito**: a constraint de telefone
-duplicado (`decisoes_telefone_semana_uniq`) só protege enquanto a decisão
-está detalhada. Depois que uma decisão é arquivada (integrada), um novo
-registro com o mesmo telefone na mesma semana não é mais bloqueado como
-duplicata, porque não sobra nenhum dado pra comparar. Foi uma troca
-consciente — o objetivo original da constraint (evitar duplo lançamento
-da mesma visita, tipicamente resolvido antes da integração acontecer)
-continua coberto na prática.
+**Efeito colateral conhecido e aceito** (herdado do v1, ainda vale): a
+constraint de telefone duplicado (`decisoes_telefone_semana_uniq`) só
+protege enquanto a decisão está viva. Depois que arquivada na virada de
+semana, um novo registro com o mesmo telefone não é mais bloqueado como
+duplicata — não sobra dado pra comparar. Segue sendo uma troca aceita.
 
-Testado com `node scripts/browser-test-arquivamento.mjs`: decisão não
-integrável nunca aparece como pendência; decisão integrável some da lista
-de pendências e da fila de Integração assim que confirmada; totais dos
-relatórios continuam corretos somando pendente + arquivado; confirmado
-direto no banco que o registro arquivado não tem nome/telefone/obs.
+Testado (`node scripts/browser-test-fechamento-semanal.mjs` + checagens
+diretas no banco): não-integrável fica visível e editável a semana
+inteira; confirmar integração deixa o card verde sem sumir da lista;
+`arquivar_semana_fechada()` arquiva corretamente confirmadas +
+não-integráveis e apaga da tabela viva; uma integrável **ainda não
+confirmada** sobrevive ao fechamento, continua pendente com o mesmo
+integrador.
 
 ## Import de decisões históricas (semanas 26-28, dado real de produção)
 
