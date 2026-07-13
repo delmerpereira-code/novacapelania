@@ -721,3 +721,27 @@ async function supaExcluirEquipe(id) {
   const { error } = await supabaseClient.from('equipes').delete().eq('id', id);
   if (error) throw error;
 }
+
+// ---------------------------------------------------------------------------
+// Crachá -- dados vêm de `membros` (mesma leitura de sempre); o QR code
+// aponta pra docs/verificar.html, página pública que confirma "membro
+// ativo" sem exigir login (ver 0009_verificacao_publica.sql).
+// ---------------------------------------------------------------------------
+const VERIFICACAO_URL = 'https://delmerpereira-code.github.io/novacapelania/verificar.html';
+
+async function supaBuscarDadosCracha(membroId) {
+  const { data, error } = await supabaseClient
+    .from('membros')
+    .select('id, nome_completo, nome_social, foto_url, rg')
+    .eq('id', membroId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('Membro não encontrado.');
+  return {
+    id: data.id,
+    nome: data.nome_social || data.nome_completo,
+    foto: data.foto_url || '',
+    rg: data.rg || '',
+    qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(VERIFICACAO_URL + '?id=' + data.id)}`,
+  };
+}

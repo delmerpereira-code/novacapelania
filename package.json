@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "playwright": "^1.61.1",
+    "pngjs": "^7.0.0",
     "supabase": "^2.109.1"
   }
 }

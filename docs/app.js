@@ -196,6 +196,7 @@ function ir(name, navIdx, btn) {
   if(name==='aniversarios') loadAniv();
   if(name==='cadastro' && !S.cad.length) loadCad();
   if(name==='equipes') loadEquipes();
+  if(name==='cracha') abrirCracha();
 }
 
 // ═══════════════════════════════════════
@@ -266,6 +267,7 @@ function startSession() {
   mods.push({ico:'✝',lbl:'Decisões',id:'decisoes'});
   mods.push({ico:'🔗',lbl:'Integração',id:'integracao'});
   mods.push({ico:'🎂',lbl:'Aniversários',id:'aniversarios'});
+  mods.push({ico:'🪪',lbl:'Crachá',id:'cracha'});
 
   $('mods').innerHTML = mods.map(m =>
     `<div class="mod" onclick="ir('${m.id}')"><div class="mico">${m.ico}</div><div class="mlbl">${m.lbl}</div></div>`
@@ -885,6 +887,9 @@ function fillView(m){
   // Botão câmera — só para Líder
   const camBtn = $('btn-cam-m');
   if(camBtn) camBtn.style.display = S.user?.perfil==='Líder' ? 'flex' : 'none';
+  // Botão crachá — Líder gera o de qualquer membro
+  const crachaBtn = $('btn-cracha-m');
+  if(crachaBtn) crachaBtn.style.display = S.user?.perfil==='Líder' ? 'inline-block' : 'none';
 
   // Badge situação
   const bd = $('m-badge');
@@ -1994,6 +1999,38 @@ function wppAniv(nome, tel) {
     // Sem telefone — abrir WhatsApp sem destinatário para copiar a mensagem
     window.open('https://api.whatsapp.com/send?text='+msg, '_blank');
   }
+}
+
+// ═══════════════════════════════════════
+// CRACHÁ
+// ═══════════════════════════════════════
+// Sem membroId, mostra o crachá do próprio usuário logado. Líder pode
+// passar o id de outro membro (chamado a partir da ficha em Cadastro).
+async function abrirCracha(membroId) {
+  const alvo = membroId || S.user.codigo;
+  document.querySelectorAll('.sc').forEach(s => s.classList.remove('on'));
+  $('sc-cracha').classList.add('on');
+  $('cracha-card').classList.remove('virado');
+  $('cracha-foto').innerHTML = '⏳';
+  $('cracha-nome').textContent = '';
+  $('cracha-rg').textContent = '';
+  $('cracha-qr').innerHTML = '';
+  try {
+    const d = await supaBuscarDadosCracha(alvo);
+    const temFoto = d.foto && d.foto.indexOf('http') === 0;
+    $('cracha-foto').innerHTML = temFoto
+      ? `<img src="${converterUrlFoto(d.foto)}" onerror="this.parentElement.textContent='${ini(d.nome)}'">`
+      : ini(d.nome);
+    $('cracha-nome').textContent = d.nome;
+    $('cracha-rg').textContent = d.rg ? ('RG: ' + d.rg) : '';
+    $('cracha-qr').innerHTML = `<img src="${d.qrUrl}" alt="QR de verificação">`;
+  } catch (e) {
+    msg('Erro ao carregar crachá: ' + e.message, 'er');
+  }
+}
+
+function virarCracha() {
+  $('cracha-card').classList.toggle('virado');
 }
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',

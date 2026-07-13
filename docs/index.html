@@ -511,6 +511,67 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
   </nav>
 </div>
 
+<!-- CRACHÁ -->
+<style>
+  .cracha-wrap{ perspective:1400px; width:100%; max-width:320px; margin:0 auto; }
+  .cracha-card{ position:relative; width:100%; aspect-ratio:461/638; transition:transform .6s; transform-style:preserve-3d; }
+  .cracha-card.virado{ transform:rotateY(180deg); }
+  .cracha-face{
+    position:absolute; inset:0; backface-visibility:hidden;
+    background-size:cover; background-position:center; border-radius:16px;
+    overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.3); container-type:inline-size;
+  }
+  .cracha-face.verso{ transform:rotateY(180deg); }
+  .cracha-foto{
+    position:absolute; left:42.73%; top:29.47%; width:50.54%; aspect-ratio:1;
+    border-radius:50%; overflow:hidden; background:#e2e8f0;
+    display:flex; align-items:center; justify-content:center; font-weight:700; color:#0f2744; font-size:8cqw;
+  }
+  .cracha-foto img{ width:100%; height:100%; object-fit:cover }
+  .cracha-qr{ position:absolute; left:2.39%; top:52.66%; width:21.26%; aspect-ratio:1; background:#fff }
+  .cracha-qr img{ width:100%; height:100% }
+  .cracha-nome{ position:absolute; left:5%; top:71%; width:90%; color:#fef9c3; font-weight:800; font-size:6.2cqw; line-height:1.2 }
+  .cracha-rg{ position:absolute; left:5%; top:82%; width:90%; color:#fef9c3; font-weight:700; font-size:4.6cqw }
+  @media print{
+    body > *:not(#sc-cracha){ display:none !important; }
+    #sc-cracha .hdr, #sc-cracha .nav, #cracha-acoes{ display:none !important; }
+    #sc-cracha{ position:static !important; }
+    .cracha-wrap{ max-width:100%; perspective:none; }
+    .cracha-card, .cracha-card.virado{ transform:none !important; display:flex; flex-direction:column; gap:16px; position:static; height:auto; aspect-ratio:auto; }
+    .cracha-face{ position:static !important; transform:none !important; backface-visibility:visible !important; width:340px; aspect-ratio:461/638; page-break-inside:avoid; }
+  }
+</style>
+<div class="sc" id="sc-cracha">
+  <div class="hdr">
+    <button class="hdr-back" onclick="ir('home')">←</button>
+    <div class="hdr-title">Crachá</div>
+    <div style="width:40px"></div>
+  </div>
+  <div class="pg" style="display:flex;flex-direction:column;align-items:center;gap:18px">
+    <div class="cracha-wrap">
+      <div class="cracha-card" id="cracha-card">
+        <div class="cracha-face frente" style="background-image:url('assets/cracha-frente.png')">
+          <div class="cracha-foto" id="cracha-foto"></div>
+          <div class="cracha-qr" id="cracha-qr"></div>
+          <div class="cracha-nome" id="cracha-nome"></div>
+          <div class="cracha-rg" id="cracha-rg"></div>
+        </div>
+        <div class="cracha-face verso" style="background-image:url('assets/cracha-verso.png')"></div>
+      </div>
+    </div>
+    <div id="cracha-acoes" style="display:flex;gap:10px">
+      <button class="btn" onclick="virarCracha()">🔄 Virar</button>
+      <button class="btn btn-p" onclick="window.print()">🖨️ Imprimir</button>
+    </div>
+  </div>
+  <nav class="nav">
+    <button class="nb" onclick="ir('home',0,this)"><span class="ni">🏠</span>Início</button>
+    <button class="nb" onclick="ir('decisoes',1,this)"><span class="ni">✝</span>Decisões</button>
+    <button class="nb" onclick="ir('integracao',2,this)"><span class="ni">🔗</span>Integração</button>
+    <button class="nb" onclick="ir('aniversarios',3,this)"><span class="ni">🎂</span>Aniversários</button>
+  </nav>
+</div>
+
 <!-- CADASTRO LISTA -->
 <div class="sc" id="sc-cadastro">
   <div class="hdr"><button class="hdr-back" onclick="ir('home')">←</button><div class="hdr-title">Cadastro</div><div style="width:40px"></div></div>
@@ -541,6 +602,7 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
     <div class="hero-name" id="m-name"></div>
     <div class="hero-id" id="m-id"></div>
     <div style="margin-top:10px"><span class="badge" id="m-badge"></span></div>
+    <button class="hdr-btn" id="btn-cracha-m" onclick="abrirCracha(S.cur.linha)" style="display:none;margin-top:10px">🪪 Ver Crachá</button>
   </div>
   <div class="tabs">
     <button class="tab on" onclick="setTab(0,this)">Dados</button>
