@@ -942,7 +942,11 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="supabase-client.js"></script>
-<script src="app.js"></script>
+<!-- Bump o ?v= aqui a cada deploy que mexer em app.js/supabase-client.js --
+     sem isso o app instalado (PWA) pode continuar servindo JS antigo do
+     cache do navegador por tempo indeterminado, mesmo com o resto do
+     site atualizado no GitHub Pages. -->
+<script src="supabase-client.js?v=20260713a"></script>
+<script src="app.js?v=20260713a"></script>
 </body>
 </html>
