@@ -1,0 +1,25 @@
+{
+  "name": "Capelania NIB",
+  "short_name": "Capelania",
+  "description": "Ministério de Capelania — Nova Igreja Batista",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0f2744",
+  "theme_color": "#0f2744",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://res.cloudinary.com/divxtp2wh/image/upload/w_192,h_192,c_fit/v1779073598/Logo_fxtrnr.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://res.cloudinary.com/divxtp2wh/image/upload/w_512,h_512,c_fit/v1779073598/Logo_fxtrnr.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
