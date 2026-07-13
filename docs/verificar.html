@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verificação — Capelania</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root{ --navy:#0f2744; --gold:#f59e0b; --green:#22c55e; --red:#ef4444; }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:var(--navy); font-family:'DM Sans',sans-serif; padding:20px;
+  }
+  .card{
+    background:#fff; border-radius:20px; padding:32px 28px; max-width:360px; width:100%;
+    text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.35);
+  }
+  .cross{ font-size:36px; color:var(--gold); margin-bottom:6px; }
+  .titulo{ font-family:'DM Serif Display',serif; font-size:20px; color:var(--navy); margin:0 0 24px; }
+  .av{
+    width:120px; height:120px; border-radius:50%; margin:0 auto 18px; overflow:hidden;
+    background:#e2e8f0; display:flex; align-items:center; justify-content:center;
+    font-size:36px; font-weight:700; color:var(--navy); border:4px solid var(--gold);
+  }
+  .av img{ width:100%; height:100%; object-fit:cover; }
+  .nome{ font-size:19px; font-weight:700; color:var(--navy); margin-bottom:10px; }
+  .badge{
+    display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:99px;
+    font-size:14px; font-weight:700;
+  }
+  .badge.ok{ background:#dcfce7; color:#15803d; }
+  .badge.no{ background:#fee2e2; color:#991b1b; }
+  .rodape{ margin-top:22px; font-size:11px; color:#94a3b8; }
+  .erro{ font-size:15px; color:#64748b; padding:20px 0; }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="cross">✝</div>
+  <p class="titulo">Ministério de Capelania</p>
+  <div id="conteudo">Verificando...</div>
+  <div class="rodape">Nova Igreja Batista</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+  const SUPABASE_URL = 'https://mujvhcodckoxbdxmhppx.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_VcJnzpvfhKbhZEED7yGr9w_a9YmXjpq';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function ini(nome) {
+    return (nome || '').trim().split(' ').filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join('');
+  }
+
+  async function verificar() {
+    const conteudo = document.getElementById('conteudo');
+    const id = new URLSearchParams(location.search).get('id');
+    if (!id) {
+      conteudo.innerHTML = '<p class="erro">Código inválido.</p>';
+      return;
+    }
+
+    const { data, error } = await supabaseClient.from('v_verificacao_membro').select('*').eq('id', id).maybeSingle();
+    if (error || !data) {
+      conteudo.innerHTML = '<p class="erro">Registro não encontrado.</p>';
+      return;
+    }
+
+    const temFoto = data.foto_url && data.foto_url.indexOf('http') === 0;
+    conteudo.innerHTML = `
+      <div class="av">${temFoto ? `<img src="${data.foto_url}" onerror="this.parentElement.textContent='${ini(data.nome)}'">` : ini(data.nome)}</div>
+      <div class="nome">${data.nome}</div>
+      ${data.ativo
+        ? '<span class="badge ok">✅ Membro ativo</span>'
+        : '<span class="badge no">⛔ Membro inativo</span>'}
+    `;
+  }
+
+  verificar();
+</script>
+</body>
+</html>
