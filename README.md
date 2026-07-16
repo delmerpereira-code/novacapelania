@@ -462,6 +462,31 @@ apagando as linhas órfãs e rodando a distribuição de novo — resultado:
 telefone inválido, mesmo critério do sistema antigo), espalhadas entre
 137 integradores (4 a 10 cada), em vez de concentradas em só 21 pessoas.
 
+## Crachá do ministério (2026-07-16)
+
+Tela `sc-cracha` (módulo "Crachá" no início, visível pra todo mundo — cada
+um vê o próprio; Líder também abre o de qualquer membro pelo botão "Ver
+Crachá" na ficha do Cadastro). Frente/verso em flip 3D CSS
+(`.cracha-wrap`/`.cracha-card`/`.cracha-face`), com `@media print`
+convertendo pra layout empilhado (frente + verso) na impressão. Dados
+(nome, RG, foto) vêm direto de `membros` via `supaBuscarDadosCracha()` —
+sem tabela nova.
+
+Arte (`docs/assets/cracha-frente.png` / `cracha-verso.png`) exportada do
+Canva pelo usuário; posição da foto calculada por análise de pixel
+(flood-fill da maior região branca contínua) e convertida pra
+porcentagem de CSS, não por estimativa visual — evita ficar reajustando
+a olho a cada nova exportação.
+
+**Sem QR code de propósito**: a primeira versão tinha QR levando pra
+`docs/verificar.html` (view pública `v_verificacao_membro`,
+`0009_verificacao_publica.sql`), pensado pra Líder confirmar presença
+escaneando o crachá de quem chegou. O usuário decidiu remover — hoje
+cada capelão registra a própria presença direto no app, então a
+verificação por QR deixou de fazer sentido. Página e view continuam no
+repo (não quebra nada deixar), só não são mais referenciadas pela tela
+de crachá.
+
 ## Próximos passos (não bloqueiam uso, mas valem revisão)
 
 1. Resolver os 4 vínculos membro-equipe pendentes da importação original

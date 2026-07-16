@@ -2014,7 +2014,6 @@ async function abrirCracha(membroId) {
   $('cracha-foto').innerHTML = '⏳';
   $('cracha-nome').textContent = '';
   $('cracha-rg').textContent = '';
-  $('cracha-qr').innerHTML = '';
   try {
     const d = await supaBuscarDadosCracha(alvo);
     const temFoto = d.foto && d.foto.indexOf('http') === 0;
@@ -2023,7 +2022,6 @@ async function abrirCracha(membroId) {
       : ini(d.nome);
     $('cracha-nome').textContent = d.nome;
     $('cracha-rg').textContent = d.rg ? ('RG: ' + d.rg) : '';
-    $('cracha-qr').innerHTML = `<img src="${d.qrUrl}" alt="QR de verificação">`;
   } catch (e) {
     msg('Erro ao carregar crachá: ' + e.message, 'er');
   }

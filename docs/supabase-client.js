@@ -723,12 +723,12 @@ async function supaExcluirEquipe(id) {
 }
 
 // ---------------------------------------------------------------------------
-// Crachá -- dados vêm de `membros` (mesma leitura de sempre); o QR code
-// aponta pra docs/verificar.html, página pública que confirma "membro
-// ativo" sem exigir login (ver 0009_verificacao_publica.sql).
+// Crachá -- dados vêm de `membros` (mesma leitura de sempre). Sem QR code
+// de propósito: cada capelão registra a própria presença hoje, então a
+// verificação por quem escaneia o crachá (docs/verificar.html,
+// 0009_verificacao_publica.sql) deixou de ser necessária -- página e view
+// continuam existindo, só não são mais referenciadas daqui.
 // ---------------------------------------------------------------------------
-const VERIFICACAO_URL = 'https://delmerpereira-code.github.io/novacapelania/verificar.html';
-
 async function supaBuscarDadosCracha(membroId) {
   const { data, error } = await supabaseClient
     .from('membros')
@@ -742,6 +742,5 @@ async function supaBuscarDadosCracha(membroId) {
     nome: data.nome_social || data.nome_completo,
     foto: data.foto_url || '',
     rg: data.rg || '',
-    qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(VERIFICACAO_URL + '?id=' + data.id)}`,
   };
 }
