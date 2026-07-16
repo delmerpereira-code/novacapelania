@@ -513,30 +513,31 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
 
 <!-- CRACHÁ -->
 <style>
-  .cracha-wrap{ perspective:1400px; width:100%; max-width:320px; margin:0 auto; }
+  .cracha-wrap{ perspective:1400px; width:100%; max-width:440px; margin:0 auto; }
   .cracha-card{ position:relative; width:100%; aspect-ratio:461/638; transition:transform .6s; transform-style:preserve-3d; }
   .cracha-card.virado{ transform:rotateY(180deg); }
   .cracha-face{
     position:absolute; inset:0; backface-visibility:hidden;
-    background-size:cover; background-position:center; border-radius:16px;
+    border-radius:16px;
     overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.3); container-type:inline-size;
   }
   .cracha-face.verso{ transform:rotateY(180deg); }
+  .cracha-bg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .cracha-foto{
-    position:absolute; left:24.30%; top:26.65%; width:54.02%; height:50.31%;
+    position:absolute; left:24.30%; top:26.65%; width:54.02%; height:50.31%; z-index:1;
     overflow:hidden; background:#e2e8f0;
     display:flex; align-items:center; justify-content:center; font-weight:700; color:#0f2744; font-size:8cqw;
   }
   .cracha-foto img{ width:100%; height:100%; object-fit:cover }
-  .cracha-nome{ position:absolute; left:5%; top:79%; width:90%; color:#fef9c3; font-weight:800; font-size:6.2cqw; line-height:1.2; text-align:center }
-  .cracha-rg{ position:absolute; left:5%; top:87%; width:90%; color:#fef9c3; font-weight:700; font-size:4.6cqw; text-align:center }
+  .cracha-nome{ position:absolute; left:5%; top:79%; width:90%; z-index:1; color:#fef9c3; font-weight:800; font-size:6.2cqw; line-height:1.2; text-align:center }
+  .cracha-rg{ position:absolute; left:5%; top:87%; width:90%; z-index:1; color:#fef9c3; font-weight:700; font-size:4.6cqw; text-align:center }
   @media print{
     body > *:not(#sc-cracha){ display:none !important; }
     #sc-cracha .hdr, #sc-cracha .nav, #cracha-acoes{ display:none !important; }
     #sc-cracha{ position:static !important; }
     .cracha-wrap{ max-width:100%; perspective:none; }
-    .cracha-card, .cracha-card.virado{ transform:none !important; display:flex; flex-direction:column; gap:16px; position:static; height:auto; aspect-ratio:auto; }
-    .cracha-face{ position:static !important; transform:none !important; backface-visibility:visible !important; width:340px; aspect-ratio:461/638; page-break-inside:avoid; }
+    .cracha-card, .cracha-card.virado{ transform:none !important; display:flex; flex-direction:row; flex-wrap:wrap; gap:16px; position:static; height:auto; aspect-ratio:auto; }
+    .cracha-face{ position:relative !important; transform:none !important; backface-visibility:visible !important; width:340px; aspect-ratio:461/638; page-break-inside:avoid; }
   }
 </style>
 <div class="sc" id="sc-cracha">
@@ -548,12 +549,15 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
   <div class="pg" style="display:flex;flex-direction:column;align-items:center;gap:18px">
     <div class="cracha-wrap">
       <div class="cracha-card" id="cracha-card">
-        <div class="cracha-face frente" style="background-image:url('assets/cracha-frente.png')">
+        <div class="cracha-face frente">
+          <img class="cracha-bg" src="assets/cracha-frente.png" alt="">
           <div class="cracha-foto" id="cracha-foto"></div>
           <div class="cracha-nome" id="cracha-nome"></div>
           <div class="cracha-rg" id="cracha-rg"></div>
         </div>
-        <div class="cracha-face verso" style="background-image:url('assets/cracha-verso.png')"></div>
+        <div class="cracha-face verso">
+          <img class="cracha-bg" src="assets/cracha-verso.png" alt="">
+        </div>
       </div>
     </div>
     <div id="cracha-acoes" style="display:flex;gap:10px">
