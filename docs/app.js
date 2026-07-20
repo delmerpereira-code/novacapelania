@@ -2307,7 +2307,7 @@ async function loadRelAnual() {
     if(!anos.length){ ls.innerHTML='<div class="empty"><div class="ei">📊</div><p>Sem dados anuais.</p></div>'; return; }
 
     const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    const CORES  = ['#4e79a7','#f28e2b'];
+    const CORES  = ['#4e79a7','#f28e2b','#59a14f','#e15759'];
     const maxVal = Math.max(...anos.flatMap(a=>a.meses.map(m=>m.valor)), 1);
 
     let html = '';

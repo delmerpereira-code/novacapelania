@@ -585,25 +585,37 @@ async function supaRelatorioPresenca(semanaAtual) {
   };
 }
 
-// Comparativo de decisões por mês, ano atual vs. anterior. Lê de
-// v_decisoes_stats (não só `decisoes`) pra continuar contando as que já
-// foram arquivadas.
+// Comparativo de decisões por mês, incluindo anos anteriores à existência
+// do sistema (2024/2025/início de 2026), guardados em
+// decisoes_resumo_historico já que não há detalhe por trás desses números
+// -- só a contagem apurada manualmente na planilha antiga. A function
+// relatorio_anual_completo() (0010_resumo_historico.sql) resolve por mês
+// se usa dado ao vivo (v_decisoes_stats) ou o número histórico; aqui só
+// decide o intervalo de anos a pedir: do ano mais antigo com número
+// histórico até o ano atual.
 async function supaRelatorioAnual() {
   const anoAtual = new Date().getFullYear();
-  const anos = [anoAtual - 1, anoAtual];
 
-  const { data, error } = await supabaseClient
-    .from('v_decisoes_stats')
-    .select('ano, mes')
-    .gte('ano', anos[0])
-    .lte('ano', anos[anos.length - 1]);
+  const { data: hist, error: errHist } = await supabaseClient
+    .from('decisoes_resumo_historico')
+    .select('ano')
+    .order('ano', { ascending: true })
+    .limit(1);
+  if (errHist) throw errHist;
+
+  const anoIni = hist.length ? Math.min(hist[0].ano, anoAtual - 1) : anoAtual - 1;
+
+  const { data, error } = await supabaseClient.rpc('relatorio_anual_completo', {
+    p_ano_ini: anoIni,
+    p_ano_fim: anoAtual,
+  });
   if (error) throw error;
 
   const contagem = {};
-  data.forEach((d) => {
-    const key = `${d.ano}-${d.mes}`;
-    contagem[key] = (contagem[key] || 0) + 1;
-  });
+  data.forEach((d) => { contagem[`${d.ano}-${d.mes}`] = d.qtde; });
+
+  const anos = [];
+  for (let a = anoIni; a <= anoAtual; a++) anos.push(a);
 
   return anos.map((ano) => {
     const meses = [];
