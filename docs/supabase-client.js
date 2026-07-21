@@ -96,7 +96,7 @@ function adaptarMembro(m, nomesEquipes) {
     culto: m.culto || '',
     senib: m.senib || '',
     fazInteg: m.faz_integracao === true ? 'S' : m.faz_integracao === false ? 'N' : '',
-    sit: m.ativo ? 'Ativo' : 'Desativado',
+    sit: m.ativo ? 'Ativo' : 'Inativo',
     obs: m.observacoes || '',
     perfil: m.perfil,
     foto: m.foto_url || '',
@@ -655,16 +655,6 @@ async function apiMudarSenha(senhaAtual, novaSenha) {
   return body;
 }
 
-async function supaValidarMatricula(matricula) {
-  const { data, error } = await supabaseClient
-    .from('membros')
-    .select('id')
-    .eq('matricula', matricula)
-    .maybeSingle();
-  if (error) throw error;
-  return { existe: !!data };
-}
-
 // ---------------------------------------------------------------------------
 // Aniversários -- a view v_aniversarios (0001_init.sql) já é exatamente o
 // que essa tela precisa, sem duplicar dado como a aba "Aniv" antiga fazia.
@@ -684,6 +674,119 @@ async function supaAtualizarFotoMembro(membroId, fotoUrl) {
   const { error } = await supabaseClient
     .from('membros')
     .update({ foto_url: fotoUrl, updated_at: new Date().toISOString() })
+    .eq('id', membroId);
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------------------
+// Cadastro -- escrita. supaLerCadastro já lia do Supabase desde sempre,
+// mas criar/editar membro (openNovo/salvarNovo/salvarDados/salvarMin/
+// salvarEq/alterarSit em app.js) ainda chamava o Apps Script antigo
+// (gravar/atualizar) até este ponto -- ou seja, cadastrar ou editar um
+// membro não gravava nada de verdade, só na sessão local do navegador.
+// Criação passa por Edge Function porque precisa gravar senha_hash (senha
+// padrão = a própria matrícula), coluna nunca exposta a nenhum client
+// (0002_rls.sql); edição de membro já existente dá pra fazer com update
+// direto, já que a RLS libera self-ou-liderança (0004_membros_lideranca.sql).
+// ---------------------------------------------------------------------------
+async function supaCriarMembro({ matricula, nomeCompleto, nomeSocial, sexo, telefone, email, perfil }) {
+  const token = localStorage.getItem('capelania_token');
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/criar-membro`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ matricula, nomeCompleto, nomeSocial, sexo, telefone, email, perfil }),
+  });
+  const body = await res.json();
+  if (!res.ok) {
+    const mensagens = {
+      matricula_ja_cadastrada: `Matrícula ${matricula} já cadastrada!`,
+      campos_obrigatorios_faltando: 'Preencha os campos obrigatórios.',
+      sem_permissao: 'Sem permissão para cadastrar membros.',
+      token_invalido: 'Sessão expirada. Faça login novamente.',
+      token_ausente: 'Sessão expirada. Faça login novamente.',
+    };
+    throw new Error(mensagens[body.erro] || 'Erro ao cadastrar.');
+  }
+  return adaptarMembro(body.membro, []);
+}
+
+function erroMatriculaDuplicada(error, matricula) {
+  if (error.code === '23505') {
+    const dup = new Error(`Matrícula ${matricula} já está em uso por outro membro.`);
+    dup.duplicata = true;
+    return dup;
+  }
+  return error;
+}
+
+// dropdowns Sim/Não (S/N) do formulário -> boolean/null do banco (domínio
+// real inclui "vazio", ver comentário de cada coluna em 0001_init.sql).
+function paraBooleanSN(v) {
+  if (v === 'S') return true;
+  if (v === 'N') return false;
+  return null;
+}
+
+async function supaAtualizarMembroPessoal(membroId, { matricula, nomeCompleto, nomeSocial, sexo, telefone, rg, email, aniversarioDia, aniversarioMes }) {
+  const { error } = await supabaseClient
+    .from('membros')
+    .update({
+      matricula,
+      nome_completo: nomeCompleto,
+      nome_social: nomeSocial,
+      sexo: sexo || null,
+      telefone: telefone || null,
+      rg: rg || null,
+      email: email || null,
+      aniversario_dia: aniversarioDia || null,
+      aniversario_mes: aniversarioMes || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', membroId);
+  if (error) throw erroMatriculaDuplicada(error, matricula);
+}
+
+async function supaAtualizarMembroMinisterial(membroId, { declaMinist, liderGA, umComDeus, batizado, grupo, culto, senib, fazInteg, ativo, perfil, obs }) {
+  const { error } = await supabaseClient
+    .from('membros')
+    .update({
+      declaracao_ministerio: paraBooleanSN(declaMinist),
+      lider_ga: liderGA || null,
+      um_com_deus: paraBooleanSN(umComDeus),
+      batizado: paraBooleanSN(batizado),
+      grupo: grupo || null,
+      culto: culto || null,
+      senib: senib || null,
+      faz_integracao: paraBooleanSN(fazInteg),
+      ativo,
+      perfil,
+      observacoes: obs || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', membroId);
+  if (error) throw error;
+}
+
+async function supaAtualizarEquipesMembro(membroId, nomesEquipes) {
+  const { data: equipes, error: errEquipes } = await supabaseClient.from('equipes').select('id, nome');
+  if (errEquipes) throw errEquipes;
+  const idsAlvo = equipes.filter((e) => nomesEquipes.includes(e.nome)).map((e) => e.id);
+
+  const { error: errDel } = await supabaseClient.from('membro_equipe').delete().eq('membro_id', membroId);
+  if (errDel) throw errDel;
+
+  if (idsAlvo.length) {
+    const { error: errIns } = await supabaseClient
+      .from('membro_equipe')
+      .insert(idsAlvo.map((equipe_id) => ({ membro_id: membroId, equipe_id })));
+    if (errIns) throw errIns;
+  }
+}
+
+async function supaAlterarSituacaoMembro(membroId, ativo) {
+  const { error } = await supabaseClient
+    .from('membros')
+    .update({ ativo, updated_at: new Date().toISOString() })
     .eq('id', membroId);
   if (error) throw error;
 }

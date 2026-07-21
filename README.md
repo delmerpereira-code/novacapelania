@@ -487,6 +487,49 @@ verificação por QR deixou de fazer sentido. Página e view continuam no
 repo (não quebra nada deixar), só não são mais referenciadas pela tela
 de crachá.
 
+## Resumo histórico de decisões (2026-07-20)
+
+`decisoes_resumo_historico` (ano, mes, qtde) guarda a contagem mensal de
+períodos anteriores à existência do sistema (2024/2025/início 2026),
+apurada manualmente na planilha antiga — sem detalhe por trás, só o
+total. Não é atualizada em tempo real: `relatorio_anual_completo(ano_ini,
+ano_fim)` (`0010_resumo_historico.sql`) resolve por mês, ao consultar,
+se usa o dado ao vivo (`v_decisoes_stats`, quando já existe) ou o número
+histórico — dado ao vivo sempre vence, então não há dois lugares
+guardando a mesma contagem. `supaRelatorioAnual()` passou a mostrar
+todos os anos com dado (histórico ou vivo), não só atual/anterior fixos.
+
+## Bug: criar/editar Cadastro não gravava nada (corrigido 2026-07-21)
+
+Achado ao investigar relato do usuário de que um cadastro novo não
+navegava por todos os campos e não dava pra editar depois. Causa raiz:
+`openNovo`/`salvarNovo`/`salvarDados`/`salvarMin`/`salvarEq`/`alterarSit`
+em `app.js` ainda chamavam o Apps Script antigo (`gravar()`/`atualizar()`
+→ `callScript()` → URL do `script.google.com`, morta) — só a *leitura*
+do Cadastro (`supaLerCadastro`) tinha sido portada pro Supabase, a
+escrita nunca foi (gap já registrado no topo de `supabase-client.js`,
+mas passou despercebido). Resultado: qualquer criação/edição parecia
+funcionar (toast de sucesso, `Object.assign` local otimista) mas não
+gravava nada de verdade — um refresh de página perdia tudo.
+
+Corrigido com escrita direta no Supabase:
+- `supaCriarMembro()` chama a nova Edge Function `criar-membro`
+  (só Líder/Capelão) porque precisa gravar `senha_hash` — coluna nunca
+  exposta a client nenhum (mesmo motivo de `login`/`mudar-senha`).
+  Senha padrão do novo cadastro = a própria matrícula.
+- `supaAtualizarMembroPessoal`/`supaAtualizarMembroMinisterial`/
+  `supaAlterarSituacaoMembro` fazem update direto — RLS já libera
+  self-ou-liderança (`0004_membros_lideranca.sql`), não precisou de
+  function nova.
+- `supaAtualizarEquipesMembro()` resolve nomes → id de `equipes` e
+  substitui as linhas de `membro_equipe` do membro (delete + insert).
+
+`SCRIPT`/`callScript`/`gravar`/`atualizar`/`buildVals` (código morto
+depois disso) foram removidos de `app.js`. Testado ponta a ponta:
+criar membro, editar dados pessoais, editar dados ministeriais
+(inclusive trocar perfil pra Líder), marcar equipe, desativar — com
+verificação direta no banco a cada passo (`scripts/browser-test-cadastro.mjs`).
+
 ## Próximos passos (não bloqueiam uso, mas valem revisão)
 
 1. Resolver os 4 vínculos membro-equipe pendentes da importação original

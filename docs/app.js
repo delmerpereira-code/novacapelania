@@ -1,9 +1,4 @@
 // ═══════════════════════════════════════
-// CONFIGURAÇÃO — troque pela URL do seu Apps Script
-// ═══════════════════════════════════════
-const SCRIPT = 'https://script.google.com/macros/s/AKfycbyU9YZ5aTr3oor26IyElApioM2nK15ifBY7xxPNlUiO7jS_tkAsvv97oj95X0XhFNkphQ/exec';
-
-// ═══════════════════════════════════════
 // ESTADO GLOBAL
 // ═══════════════════════════════════════
 const S = {
@@ -118,61 +113,11 @@ function naSemanAtual(str) {
   return d>=sw.ini && d<=sw.fim;
 }
 
-// ═══════════════════════════════════════
-// API via JSONP — funciona sem CORS
-// ═══════════════════════════════════════
-function callScript(params, _retry) {
-  // Tenta fetch primeiro (mais confiável em mobile), fallback para JSONP
-  const qs = Object.entries(params)
-    .map(([k,v]) => encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
-  const url = SCRIPT + '?' + qs;
-
-  return fetch(url, {redirect:'follow'})
-    .then(r => r.json())
-    .catch(() => {
-      // Fallback JSONP se fetch falhar (CORS em alguns ambientes)
-      return new Promise((ok, er) => {
-        const cb = '_cb' + Date.now() + Math.floor(Math.random()*9999);
-        const sc = document.createElement('script');
-        const timer = setTimeout(() => {
-          cleanup();
-          if(!_retry) {
-            // Uma segunda tentativa automática após 3s
-            callScript(params, true).then(ok).catch(er);
-          } else {
-            er(new Error('Sem resposta do servidor. Verifique sua conexão.'));
-          }
-        }, 25000);
-        function cleanup() { clearTimeout(timer); delete window[cb]; if(sc.parentNode) sc.remove(); }
-        window[cb] = data => { cleanup(); ok(data||{}); };
-        sc.onerror = () => {
-          cleanup();
-          if(!_retry) {
-            setTimeout(() => callScript(params, true).then(ok).catch(er), 2000);
-          } else {
-            er(new Error('Erro ao conectar. Verifique sua internet e tente novamente.'));
-          }
-        };
-        const qsCb = qs + '&callback=' + encodeURIComponent(cb);
-        sc.src = SCRIPT + '?' + qsCb;
-        document.head.appendChild(sc);
-      });
-    });
-}
-
 async function lerCadastro() {
   return await supaLerCadastro();
 }
 async function lerEquipes() {
   return await supaLerEquipes();
-}
-async function gravar(aba, vals) {
-  await callScript({acao:'gravar', aba, dados: JSON.stringify(vals)});
-  return true;
-}
-async function atualizar(aba, linha, vals) {
-  await callScript({acao:'atualizar', aba, linha: String(linha), dados: JSON.stringify(vals)});
-  return true;
 }
 
 // ═══════════════════════════════════════
@@ -976,21 +921,28 @@ function showEdit(pane, on){
   }
 }
 
-function buildVals(m, overrides){
-  const o = {...m, ...overrides};
-  return [o.id,o.foto||'',o.pin,o.nomeComp,o.nomeSoc,o.usuario,o.sexo||'',o.tel||'',o.rg||'',o.email||'',
-    o.declaMinist||'',o.liderGA||'',o.umComDeus||'',o.batizado||'',o.grupo||'',o.culto||'',o.senib||'',
-    o.aniversario||'',o.equipes||'',o.fazInteg||'',o.sit||'Ativo',o.obs||'',o.perfil||'Membro'];
+// Campo de edição usa "DD/MM" (mesmo formato exibido em showEdit) --
+// converte pros dois smallint que a coluna real guarda.
+function parseAnivDDMM(str){
+  const p = (str||'').trim().split('/');
+  if(p.length<2) return {dia:null, mes:null};
+  const dia = parseInt(p[0],10), mes = parseInt(p[1],10);
+  if(!dia || !mes || mes<1 || mes>12 || dia<1 || dia>31) return {dia:null, mes:null};
+  return {dia, mes};
 }
 
 async function salvarDados(){
   const m=S.cur;
   const pin=$('ep').value.trim(),nc=$('enc').value.trim(),ns=$('ens').value.trim();
   if(!pin||!nc||!ns){ msg('Preencha os campos obrigatórios.','er'); return; }
-  const ovr={pin,nomeComp:nc,nomeSoc:ns,usuario:m.usuario||pin,sexo:$('esx').value,tel:$('etel').value.trim(),rg:$('erg').value.trim(),email:$('eem').value.trim(),aniversario:$('ean').value.trim()};
+  const {dia:aniversarioDia, mes:aniversarioMes} = parseAnivDDMM($('ean').value);
+  const ovr={pin,nomeComp:nc,nomeSoc:ns,usuario:pin,sexo:$('esx').value,tel:$('etel').value.trim(),rg:$('erg').value.trim(),email:$('eem').value.trim(),aniversario:$('ean').value.trim()};
   load('Salvando...');
   try{
-    await atualizar('Cadastro', m.linha, buildVals(m,ovr));
+    await supaAtualizarMembroPessoal(m.linha, {
+      matricula:pin, nomeCompleto:nc, nomeSocial:ns, sexo:ovr.sexo, telefone:ovr.tel,
+      rg:ovr.rg, email:ovr.email, aniversarioDia, aniversarioMes,
+    });
     Object.assign(m,ovr);
     S.cad=S.cadAll.filter(x=>x.sit==='Ativo');
     unload(); fillView(m); showEdit(0,false);
@@ -1002,10 +954,14 @@ async function salvarMin(){
   const m=S.cur;
   const ovr={declaMinist:$('edc').value,liderGA:$('elg').value.trim(),umComDeus:$('eucd').value,
     batizado:$('ebat').value,grupo:$('egrp').value,culto:$('eclt').value,senib:$('esnb').value,
-    fazInteg:$('efi').value,sit:$('esit').value,perfil:$('epf').value,obs:$('eobs').value.trim()};
+    fazInteg:$('efi').value,sit:$('esit').value,perfil:$('epf').value==='LIDER'?'Líder':'Membro',obs:$('eobs').value.trim()};
   load('Salvando...');
   try{
-    await atualizar('Cadastro', m.linha, buildVals(m,ovr));
+    await supaAtualizarMembroMinisterial(m.linha, {
+      declaMinist:ovr.declaMinist, liderGA:ovr.liderGA, umComDeus:ovr.umComDeus, batizado:ovr.batizado,
+      grupo:ovr.grupo, culto:ovr.culto, senib:ovr.senib, fazInteg:ovr.fazInteg,
+      ativo: ovr.sit==='Ativo', perfil:ovr.perfil, obs:ovr.obs,
+    });
     Object.assign(m,ovr);
     S.cad=S.cadAll.filter(x=>x.sit==='Ativo');
     unload(); fillView(m); showEdit(1,false);
@@ -1035,12 +991,12 @@ function renderEqList(selecionadas){
 
 async function salvarEq(){
   const checks=$('eq-list').querySelectorAll('.eq-item.on');
-  const equipes=[...checks].map(c=>c.dataset.eq).join(',');
+  const nomesEquipes=[...checks].map(c=>c.dataset.eq);
   const m=S.cur;
   load('Salvando equipes...');
   try{
-    await atualizar('Cadastro', m.linha, buildVals(m,{equipes}));
-    m.equipes=equipes;
+    await supaAtualizarEquipesMembro(m.linha, nomesEquipes);
+    m.equipes=nomesEquipes.join(',');
     unload(); msg('✅ Equipes salvas!','ok');
   }catch(e){unload();msg('Erro: '+e.message,'er');}
 }
@@ -1051,7 +1007,7 @@ async function alterarSit(){
   if(!confirm((novo==='Inativo'?'Desativar':'Ativar')+' '+(m.nomeSoc||m.nomeComp)+'?')) return;
   load('Atualizando...');
   try{
-    await atualizar('Cadastro', m.linha, buildVals(m,{sit:novo}));
+    await supaAlterarSituacaoMembro(m.linha, novo==='Ativo');
     m.sit=novo;
     S.cad=S.cadAll.filter(x=>x.sit==='Ativo');
     unload(); fillView(m);
@@ -1074,27 +1030,13 @@ async function salvarNovo(){
   const pin=$('nn-pin').value.trim(),nc=$('nn-nc').value.trim();
   const ns=$('nn-ns').value.trim();
   if(!pin||!nc||!ns){ msg('Preencha os campos obrigatórios.','er'); return; }
-  // Validar matrícula duplicada
-  load('Verificando matrícula...');
-  try {
-    const chk = await supaValidarMatricula(pin);
-    if(chk.existe){ unload(); msg('Matrícula '+pin+' já cadastrada!','er'); return; }
-  } catch(e){
-    unload();
-    msg('Erro ao verificar matrícula. Tente novamente.','er');
-    return;
-  }
-  const id='CP'+pin;
-  // Col F = senha padrão = matrícula
-  const vals=[id,'',pin,nc,ns,pin,$('nn-sx').value,$('nn-tel').value.trim(),'',
-    $('nn-em').value.trim(),'','','','','','','','','','','Ativo','',$('nn-pf').value];
   load('Cadastrando...');
   try{
-    await gravar('Cadastro',vals);
-    const novo={linha:S.cadAll.length+2,id,foto:'',pin,nomeComp:nc,nomeSoc:ns,usuario:pin,
-      sexo:$('nn-sx').value,tel:$('nn-tel').value.trim(),rg:'',email:$('nn-em').value.trim(),
-      declaMinist:'',liderGA:'',umComDeus:'',batizado:'',grupo:'',culto:'',senib:'',
-      aniversario:'',equipes:'',fazInteg:'',sit:'Ativo',obs:'',perfil:$('nn-pf').value};
+    const novo = await supaCriarMembro({
+      matricula:pin, nomeCompleto:nc, nomeSocial:ns,
+      sexo:$('nn-sx').value, telefone:$('nn-tel').value.trim(), email:$('nn-em').value.trim(),
+      perfil:$('nn-pf').value,
+    });
     S.cadAll.push(novo); S.cad.push(novo);
     unload(); closeNovo(); renderCad();
     msg('✅ Membro cadastrado! Senha padrão: '+pin,'ok');
